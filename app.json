@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Gretex Music Room",
+    "slug": "gretex-music-room",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "gretexmusicroom",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#5b21b6"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gretexmusicroom.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#5b21b6"
+      },
+      "package": "com.gretexmusicroom.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
