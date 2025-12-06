@@ -30,7 +30,7 @@ const LoginScreen = () => {
 
   // Google OAuth configuration
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
   });
 
   useEffect(() => {
@@ -114,6 +114,14 @@ const LoginScreen = () => {
     }
   };
 
+  const handleGoogleSignIn = () => {
+    if (promptAsync) {
+      promptAsync();
+    } else {
+      Alert.alert('Error', 'Google Sign In is not available');
+    }
+  };
+
   return (
     <LinearGradient colors={['#5b21b6', '#7c3aed', '#a78bfa']} style={styles.container}>
       <KeyboardAvoidingView
@@ -175,7 +183,7 @@ const LoginScreen = () => {
           <View style={styles.socialButtons}>
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => promptAsync()}
+              onPress={handleGoogleSignIn}
               disabled={!request || loading}
             >
               <Ionicons name="logo-google" size={20} color="#DB4437" />
@@ -188,18 +196,22 @@ const LoginScreen = () => {
                 onPress={handleAppleLogin}
                 disabled={loading}
               >
-                <Ionicons name="logo-apple" size={20} color="#fff" />
-                <Text style={styles.appleButtonText}>Apple</Text>
+                <Ionicons name="logo-apple" size={20} color="#000" />
+                <Text style={[styles.socialButtonText, { color: '#000' }]}>
+                  Apple
+                </Text>
               </TouchableOpacity>
             )}
           </View>
 
+          {/* Sign Up Link */}
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => navigation.navigate('Signup')}
+            onPress={() => navigation.navigate('Signup' as never)}
           >
             <Text style={styles.linkText}>
-              Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
+              Don't have an account?{' '}
+              <Text style={styles.linkTextBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -215,18 +227,18 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    padding: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   logo: {
-    fontSize: 80,
-    marginBottom: 16,
+    fontSize: 60,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 42,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
@@ -271,11 +283,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#fff',
+    color: '#e9d5ff',
     fontSize: 14,
   },
   linkTextBold: {
     fontWeight: 'bold',
+    color: '#fff',
   },
   divider: {
     flexDirection: 'row',
@@ -285,47 +298,41 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e9d5ff',
+    backgroundColor: '#c4b5fd',
   },
   dividerText: {
+    marginHorizontal: 16,
     color: '#e9d5ff',
-    paddingHorizontal: 16,
     fontSize: 14,
   },
   socialButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
   },
   googleButton: {
     flex: 1,
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  appleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   socialButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1f2937',
-  },
-  appleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#000',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  appleButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
   },
 });
 

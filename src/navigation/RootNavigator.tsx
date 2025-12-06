@@ -7,6 +7,7 @@ import TrackPlayerScreen from '../screens/TrackPlayerScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationSettingsScreen from '../screens/settings/NotificationSettingsScreen';
+import ChatScreen from '../screens/chat/ChatScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -77,6 +78,13 @@ const RootNavigator = () => {
             backgroundColor: '#fff',
           },
           headerTintColor: '#1f2937',
+        }}
+      />
+      <Stack.Screen 
+        name="Chat" 
+        component={ChatScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

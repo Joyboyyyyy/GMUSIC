@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 
 type CheckoutScreenRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -26,6 +27,7 @@ const CheckoutScreen = () => {
   const { pack } = route.params;
   const { user } = useAuthStore();
   const { addPack } = useLibraryStore();
+  const { addPurchase } = usePurchasedCoursesStore();
   const [processing, setProcessing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'upi' | 'netbanking'>('card');
 
@@ -38,6 +40,9 @@ const CheckoutScreen = () => {
       
       // Add pack to library
       addPack(pack);
+      
+      // Enable chat with mentor
+      addPurchase(pack.id);
 
       Alert.alert(
         'Payment Successful! 🎉',

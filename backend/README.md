@@ -1,0 +1,381 @@
+# Gretex Music Room - Backend API
+
+Backend API server for the Gretex Music Room mobile application.
+
+## 🚀 Tech Stack
+
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT
+- **Payment**: Stripe
+- **CRM**: Zoho CRM Integration
+
+---
+
+## 📁 Project Structure
+
+```
+backend/
+├── src/
+│   ├── app.js                 # Express app configuration
+│   ├── server.js              # Server entry point
+│   ├── config/
+│   │   ├── prisma.js          # Prisma client configuration
+│   │   └── zoho.js            # Zoho CRM client
+│   ├── middleware/
+│   │   └── auth.js            # Authentication middleware
+│   ├── routes/
+│   │   ├── auth.routes.js     # Auth endpoints
+│   │   ├── course.routes.js   # Course endpoints
+│   │   ├── payment.routes.js  # Payment endpoints
+│   │   └── zoho.routes.js     # Zoho CRM endpoints
+│   ├── controllers/
+│   │   ├── auth.controller.js
+│   │   ├── course.controller.js
+│   │   ├── payment.controller.js
+│   │   └── zoho.controller.js
+│   ├── services/
+│   │   ├── auth.service.js
+│   │   ├── course.service.js
+│   │   ├── payment.service.js
+│   │   └── zoho.service.js
+│   └── utils/
+│       ├── jwt.js             # JWT utilities
+│       └── response.js        # Response helpers
+├── prisma/
+│   └── schema.prisma          # Database schema
+├── package.json
+└── .env.example
+```
+
+---
+
+## 🛠️ Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+cd backend
+npm install
+```
+
+### 2. Configure Environment Variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your configuration:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/gretex_music_room"
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key
+
+# Zoho CRM
+ZOHO_CLIENT_ID=your_zoho_client_id
+ZOHO_CLIENT_SECRET=your_zoho_client_secret
+ZOHO_REFRESH_TOKEN=your_zoho_refresh_token
+
+# Stripe
+STRIPE_SECRET_KEY=your_stripe_secret_key
+```
+
+### 3. Set Up Database
+
+```bash
+# Generate Prisma Client
+npm run prisma:generate
+
+# Run migrations
+npm run prisma:migrate
+
+# (Optional) Open Prisma Studio
+npm run prisma:studio
+```
+
+### 4. Start Server
+
+```bash
+# Development (with auto-reload)
+npm run dev
+
+# Production
+npm start
+```
+
+Server will run on `http://localhost:3000`
+
+---
+
+## 📡 API Endpoints
+
+### Authentication (`/api/auth`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/register` | Register new user | No |
+| POST | `/login` | Login user | No |
+| GET | `/me` | Get current user profile | Yes |
+| PUT | `/me` | Update user profile | Yes |
+
+### Courses (`/api/courses`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/` | Get all courses | No |
+| GET | `/:courseId` | Get course by ID | No |
+| GET | `/user/my-courses` | Get user's enrolled courses | Yes |
+| POST | `/` | Create new course | Yes (Admin/Teacher) |
+| PUT | `/:courseId` | Update course | Yes (Admin/Teacher) |
+| DELETE | `/:courseId` | Delete course | Yes (Admin) |
+| POST | `/:courseId/tracks` | Add track to course | Yes (Admin/Teacher) |
+
+### Payments (`/api/payments`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/create-intent` | Create payment intent | Yes |
+| POST | `/confirm` | Confirm payment | Yes |
+| GET | `/my-purchases` | Get user's purchases | Yes |
+| POST | `/:purchaseId/refund` | Refund purchase | Yes (Admin) |
+
+### Zoho CRM (`/api/zoho`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/sync` | Sync user data to Zoho | Yes |
+| POST | `/leads` | Create lead in Zoho | Yes |
+
+---
+
+## 📝 Example API Usage
+
+### Register User
+
+```bash
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "user": { ... },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+### Login
+
+```bash
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "password": "securepassword"
+}
+```
+
+### Get Courses
+
+```bash
+GET /api/courses?category=Guitar&level=Beginner
+
+Response:
+{
+  "success": true,
+  "data": [
+    {
+      "id": "course_123",
+      "title": "Guitar Mastery",
+      "price": 1999,
+      ...
+    }
+  ]
+}
+```
+
+### Create Payment
+
+```bash
+POST /api/payments/create-intent
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "courseId": "course_123",
+  "amount": 1999
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "clientSecret": "pi_...",
+    "purchaseId": "purchase_456"
+  }
+}
+```
+
+---
+
+## 🔒 Security Features
+
+- ✅ JWT-based authentication
+- ✅ Password hashing with bcrypt
+- ✅ Role-based access control (STUDENT, TEACHER, ADMIN)
+- ✅ Protected routes with middleware
+- ✅ Input validation
+- ✅ CORS configuration
+- ✅ Environment variable protection
+
+---
+
+## 🗄️ Database Schema
+
+### Models:
+- **User** - User accounts (students, teachers, admins)
+- **Course** - Music courses/packs
+- **Track** - Individual lessons within courses
+- **Enrollment** - User course enrollments
+- **Purchase** - Payment transactions
+- **ChatMessage** - Mentor-student chat messages
+- **Session** - User sessions
+
+### Relations:
+- User → Enrollments (one-to-many)
+- User → Purchases (one-to-many)
+- Course → Tracks (one-to-many)
+- Course → Enrollments (one-to-many)
+
+---
+
+## 🔌 Zoho CRM Integration
+
+### Features:
+- ✅ Auto-create leads on course interest
+- ✅ Update lead on purchase
+- ✅ Convert lead to student on enrollment
+- ✅ Sync enrollment data
+- ✅ Track revenue and course metrics
+
+### Zoho Fields:
+- Lead Source: Mobile App
+- Course Interest
+- Purchase Amount
+- Payment Status
+- Total Courses Enrolled
+
+---
+
+## 💳 Payment Integration
+
+### Stripe Features:
+- Payment intents for secure payments
+- Automatic currency conversion
+- Webhook support (ready to implement)
+- Refund processing
+
+### Payment Flow:
+1. Create payment intent
+2. Process payment on client
+3. Confirm payment on server
+4. Create enrollment
+5. Update Zoho CRM
+
+---
+
+## 🧪 Testing
+
+### Test Database Connection:
+```bash
+npm run prisma:studio
+```
+
+### Test API Endpoints:
+```bash
+# Using curl
+curl http://localhost:3000/health
+
+# Using Postman
+Import the API endpoints and test each route
+```
+
+---
+
+## 📊 Development Scripts
+
+```bash
+npm start          # Start production server
+npm run dev        # Start with nodemon (auto-reload)
+npm run prisma:generate  # Generate Prisma client
+npm run prisma:migrate   # Run database migrations
+npm run prisma:studio    # Open Prisma Studio (DB GUI)
+```
+
+---
+
+## 🚀 Deployment
+
+### Prerequisites:
+- PostgreSQL database
+- Node.js 18+ runtime
+- Environment variables configured
+
+### Steps:
+1. Set up PostgreSQL database
+2. Configure production .env file
+3. Run database migrations
+4. Start server with PM2 or similar
+
+### Environment:
+```bash
+NODE_ENV=production
+DATABASE_URL=<production-db-url>
+JWT_SECRET=<strong-secret>
+```
+
+---
+
+## 📞 Support
+
+For issues or questions:
+- Check logs in console
+- Verify database connection
+- Check environment variables
+- Review Prisma schema
+
+---
+
+## 🎯 Status
+
+```
+✅ Express server configured
+✅ Prisma ORM integrated
+✅ JWT authentication implemented
+✅ CRUD operations for courses
+✅ Payment processing (Stripe)
+✅ Zoho CRM integration
+✅ Role-based access control
+✅ Error handling
+✅ Production-ready
+```
+
+---
+
+*Backend API v1.0.0*  
+*Built for Gretex Music Room Mobile App*
+

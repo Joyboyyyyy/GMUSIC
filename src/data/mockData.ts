@@ -250,3 +250,37 @@ export const categories: { name: Category; icon: string; color: string }[] = [
   { name: 'Songwriting', icon: '📝', color: '#6366f1' },
 ];
 
+export interface Testimonial {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  content: string;
+}
+
+export const mockTestimonials: Testimonial[] = [
+  {
+    id: 't1',
+    name: 'Sarah Mitchell',
+    avatarUrl: 'https://randomuser.me/api/portraits/women/44.jpg',
+    content: 'These lessons completely transformed the way I practice guitar. Highly recommended!',
+  },
+  {
+    id: 't2',
+    name: 'Daniel Kim',
+    avatarUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
+    content: 'Amazing teachers and well-structured lessons. I improved faster than ever!',
+  },
+  {
+    id: 't3',
+    name: 'Emma Rodriguez',
+    avatarUrl: 'https://randomuser.me/api/portraits/women/65.jpg',
+    content: 'I love the variety of lessons. Perfect for beginners and advanced musicians!',
+  },
+  {
+    id: 't4',
+    name: 'Alex Johnson',
+    avatarUrl: 'https://randomuser.me/api/portraits/men/52.jpg',
+    content: 'The quality of instruction is outstanding. Worth every penny!',
+  },
+];
+

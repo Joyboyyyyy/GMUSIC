@@ -44,42 +44,42 @@ const BrowseScreen = () => {
         style={styles.categoriesContainer}
         contentContainerStyle={styles.categoriesContent}
       >
-        <TouchableOpacity
-          style={[
-            styles.categoryChip,
-            selectedCategory === 'All' && styles.categoryChipActive,
-          ]}
-          onPress={() => setSelectedCategory('All')}
-        >
-          <Text
-            style={[
-              styles.categoryChipText,
-              selectedCategory === 'All' && styles.categoryChipTextActive,
-            ]}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-        {categories.map((category) => (
           <TouchableOpacity
-            key={category.name}
             style={[
               styles.categoryChip,
-              selectedCategory === category.name && styles.categoryChipActive,
+              selectedCategory === 'All' && styles.categoryChipActive,
             ]}
-            onPress={() => setSelectedCategory(category.name)}
+            onPress={() => setSelectedCategory('All')}
           >
-            <Text style={styles.categoryIcon}>{category.icon}</Text>
             <Text
               style={[
                 styles.categoryChipText,
-                selectedCategory === category.name && styles.categoryChipTextActive,
+                selectedCategory === 'All' && styles.categoryChipTextActive,
               ]}
             >
-              {category.name}
+              All
             </Text>
           </TouchableOpacity>
-        ))}
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.name}
+              style={[
+                styles.categoryChip,
+                selectedCategory === category.name && styles.categoryChipActive,
+              ]}
+              onPress={() => setSelectedCategory(category.name)}
+            >
+              <Text style={styles.categoryIcon}>{category.icon}</Text>
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  selectedCategory === category.name && styles.categoryChipTextActive,
+                ]}
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
       </ScrollView>
 
       {/* Results Count */}
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   },
   categoriesContent: {
     paddingHorizontal: 20,
-    gap: 5,
+    gap: 8,
   },
   categoryChip: {
     flexDirection: 'row',

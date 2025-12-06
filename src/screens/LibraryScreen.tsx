@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useLibraryStore } from '../store/libraryStore';
 import PackCard from '../components/PackCard';
+import ProtectedScreen from '../components/ProtectedScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -27,108 +28,112 @@ const LibraryScreen = () => {
 
   if (purchasedPacks.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Library</Text>
-          <Text style={styles.subtitle}>Your purchased lessons</Text>
-        </View>
-        <View style={styles.emptyContainer}>
-          <Ionicons name="library-outline" size={100} color="#d1d5db" />
-          <Text style={styles.emptyTitle}>Your library is empty</Text>
-          <Text style={styles.emptyText}>
-            Start learning by purchasing your first lesson pack
-          </Text>
-          <TouchableOpacity
-            style={styles.browseButton}
-            onPress={() => navigation.navigate('Main', { screen: 'Browse' })}
-          >
-            <Text style={styles.browseButtonText}>Browse Lessons</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <ProtectedScreen>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>My Library</Text>
+            <Text style={styles.subtitle}>Your purchased lessons</Text>
+          </View>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="library-outline" size={100} color="#d1d5db" />
+            <Text style={styles.emptyTitle}>Your library is empty</Text>
+            <Text style={styles.emptyText}>
+              Start learning by purchasing your first lesson pack
+            </Text>
+            <TouchableOpacity
+              style={styles.browseButton}
+              onPress={() => navigation.navigate('Main', { screen: 'Browse' })}
+            >
+              <Text style={styles.browseButtonText}>Browse Lessons</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </ProtectedScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My Library</Text>
-        <Text style={styles.subtitle}>
-          {purchasedPacks.length} {purchasedPacks.length === 1 ? 'pack' : 'packs'} purchased
-        </Text>
-      </View>
-
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="play-circle" size={24} color="#7c3aed" />
-          </View>
-          <Text style={styles.statValue}>{purchasedPacks.length}</Text>
-          <Text style={styles.statLabel}>Active Packs</Text>
-        </View>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="time" size={24} color="#10b981" />
-          </View>
-          <Text style={styles.statValue}>
-            {Math.floor(
-              purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60
-            )}h
+    <ProtectedScreen>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>My Library</Text>
+          <Text style={styles.subtitle}>
+            {purchasedPacks.length} {purchasedPacks.length === 1 ? 'pack' : 'packs'} purchased
           </Text>
-          <Text style={styles.statLabel}>Total Content</Text>
         </View>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="trophy" size={24} color="#f59e0b" />
-          </View>
-          <Text style={styles.statValue}>0</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-      </View>
 
-      {/* Continue Learning */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Continue Learning</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScroll}
-        >
-          {purchasedPacks.map((pack) => (
-            <PackCard
-              key={pack.id}
-              pack={pack}
-              onPress={() => handlePackPress(pack.id)}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* All Purchased Packs */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>All My Packs</Text>
-        </View>
-        <FlatList
-          data={purchasedPacks}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.grid}
-          columnWrapperStyle={styles.gridRow}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={false}
-          renderItem={({ item }) => (
-            <View style={styles.gridItem}>
-              <PackCard pack={item} onPress={() => handlePackPress(item.id)} />
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Ionicons name="play-circle" size={24} color="#7c3aed" />
             </View>
-          )}
-        />
-      </View>
-    </SafeAreaView>
+            <Text style={styles.statValue}>{purchasedPacks.length}</Text>
+            <Text style={styles.statLabel}>Active Packs</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Ionicons name="time" size={24} color="#10b981" />
+            </View>
+            <Text style={styles.statValue}>
+              {Math.floor(
+                purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60
+              )}h
+            </Text>
+            <Text style={styles.statLabel}>Total Content</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Ionicons name="trophy" size={24} color="#f59e0b" />
+            </View>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+        </View>
+
+        {/* Continue Learning */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Continue Learning</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScroll}
+          >
+            {purchasedPacks.map((pack) => (
+              <PackCard
+                key={pack.id}
+                pack={pack}
+                onPress={() => handlePackPress(pack.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* All Purchased Packs */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>All My Packs</Text>
+          </View>
+          <FlatList
+            data={purchasedPacks}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            contentContainerStyle={styles.grid}
+            columnWrapperStyle={styles.gridRow}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
+            renderItem={({ item }) => (
+              <View style={styles.gridItem}>
+                <PackCard pack={item} onPress={() => handlePackPress(item.id)} />
+              </View>
+            )}
+          />
+        </View>
+      </SafeAreaView>
+    </ProtectedScreen>
   );
 };
 

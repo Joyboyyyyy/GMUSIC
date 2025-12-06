@@ -16,6 +16,7 @@ import { RootStackParamList } from '../navigation/types';
 import { mockPacks, mockTracks } from '../data/mockData';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 
 type PackDetailScreenRouteProp = RouteProp<RootStackParamList, 'PackDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -26,10 +27,12 @@ const PackDetailScreen = () => {
   const { packId } = route.params;
   const { isAuthenticated } = useAuthStore();
   const { hasPack } = useLibraryStore();
+  const { canChat } = usePurchasedCoursesStore();
 
   const pack = mockPacks.find((p) => p.id === packId);
   const tracks = mockTracks[packId] || [];
   const isPurchased = hasPack(packId);
+  const canChatWithMentor = canChat(packId);
 
   if (!pack) {
     return (
@@ -67,6 +70,14 @@ const PackDetailScreen = () => {
     } else {
       Alert.alert('Premium Content', 'Purchase this pack to access all lessons');
     }
+  };
+
+  const handleChatWithMentor = () => {
+    navigation.navigate('Chat', {
+      mentorName: pack.teacher.name,
+      packTitle: pack.title,
+      packId: packId,
+    });
   };
 
   return (
@@ -197,12 +208,27 @@ const PackDetailScreen = () => {
         </View>
       )}
 
-      {isPurchased && (
+      {isPurchased && !canChatWithMentor && (
+        <View style={styles.lockedChatContainer}>
+          <View style={styles.lockedChatCard}>
+            <Ionicons name="lock-closed" size={24} color="#7c3aed" />
+            <Text style={styles.lockedChatText}>
+              🔒 Purchase this course to unlock chat with your mentor
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {isPurchased && canChatWithMentor && (
         <View style={styles.bottomBar}>
           <View style={styles.purchasedBadge}>
             <Ionicons name="checkmark-circle" size={24} color="#10b981" />
             <Text style={styles.purchasedText}>Purchased</Text>
           </View>
+          <TouchableOpacity style={styles.chatButton} onPress={handleChatWithMentor}>
+            <Ionicons name="chatbubbles" size={20} color="#fff" />
+            <Text style={styles.chatButtonText}>Chat with Mentor</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -430,13 +456,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flex: 1,
-    justifyContent: 'center',
   },
   purchasedText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#10b981',
+  },
+  chatButton: {
+    flexDirection: 'row',
+    backgroundColor: '#7c3aed',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 8,
+  },
+  chatButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  lockedChatContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  lockedChatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  lockedChatText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6b7280',
+    lineHeight: 20,
   },
 });
 

@@ -9,6 +9,7 @@ export type RootStackParamList = {
   Checkout: { pack: MusicPack };
   EditProfile: undefined;
   NotificationSettings: undefined;
+  Chat: { mentorName: string; packTitle: string; packId: string };
 };
 
 export type AuthStackParamList = {
@@ -18,6 +19,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
+  Dashboard: undefined;
   Browse: undefined;
   Library: undefined;
   Profile: undefined;

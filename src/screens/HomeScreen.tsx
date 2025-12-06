@@ -12,8 +12,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { mockPacks, mockTeachers } from '../data/mockData';
+import { mockPacks, mockTeachers, mockTestimonials } from '../data/mockData';
 import PackCard from '../components/PackCard';
+import TestimonialCard from '../components/TestimonialCard';
 import { useAuthStore } from '../store/authStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -173,6 +174,28 @@ const HomeScreen = () => {
                 key={pack.id}
                 pack={pack}
                 onPress={() => handlePackPress(pack.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Testimonials */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>What Students Say</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScroll}
+          >
+            {mockTestimonials.map((testimonial) => (
+              <TestimonialCard
+                key={testimonial.id}
+                id={testimonial.id}
+                name={testimonial.name}
+                avatarUrl={testimonial.avatarUrl}
+                content={testimonial.content}
               />
             ))}
           </ScrollView>

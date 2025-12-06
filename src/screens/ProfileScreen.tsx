@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
+import ProtectedScreen from '../components/ProtectedScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -80,68 +81,70 @@ const ProfileScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View style={styles.header}>
-          <Image source={{ uri: user?.avatar }} style={styles.avatar} />
-          <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-        </View>
+    <ProtectedScreen>
+      <SafeAreaView style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Profile Header */}
+          <View style={styles.header}>
+            <Image source={{ uri: user?.avatar }} style={styles.avatar} />
+            <Text style={styles.name}>{user?.name}</Text>
+            <Text style={styles.email}>{user?.email}</Text>
+          </View>
 
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{purchasedPacks.length}</Text>
-            <Text style={styles.statLabel}>Packs</Text>
+          {/* Stats */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{purchasedPacks.length}</Text>
+              <Text style={styles.statLabel}>Packs</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {Math.floor(
+                  purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60
+                )}
+              </Text>
+              <Text style={styles.statLabel}>Hours</Text>
+            </View>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              {Math.floor(
-                purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60
-              )}
-            </Text>
-            <Text style={styles.statLabel}>Hours</Text>
-          </View>
-        </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              onPress={item.onPress}
-            >
-              <View style={styles.menuLeft}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name={item.icon as any} size={22} color="#7c3aed" />
+          {/* Menu Items */}
+          <View style={styles.menuContainer}>
+            {menuItems.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.menuItem}
+                onPress={item.onPress}
+              >
+                <View style={styles.menuLeft}>
+                  <View style={styles.iconContainer}>
+                    <Ionicons name={item.icon as any} size={22} color="#7c3aed" />
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text style={styles.menuTitle}>{item.title}</Text>
+                    <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                  </View>
                 </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+          {/* Logout Button */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </ProtectedScreen>
   );
 };
 
