@@ -8,15 +8,18 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import RazorpayCheckout from 'react-native-razorpay';
 import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
+import { getApiUrl } from '../config/api';
 
 type CheckoutScreenRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -32,37 +35,114 @@ const CheckoutScreen = () => {
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'upi' | 'netbanking'>('card');
 
   const handlePayment = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please login to continue with payment');
+      return;
+    }
+
     setProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
-      setProcessing(false);
+    try {
+      // Step 1: Create Razorpay order on backend
+      // Get userId - use actual user ID or test UUID
+      // Note: If user.id is not a valid UUID, backend will use test fallback
+      const userId = user?.id || 'd211d2e3-32a0-412f-910d-0fa92ecbfde8'; // Test UUID fallback
+      const courseId = pack?.id || '7503bea9-90ba-450e-b052-687a7fef41bc'; // Test UUID fallback
       
-      // Add pack to library
-      addPack(pack);
+      console.log(`Creating Razorpay order - userId: ${userId}, courseId: ${courseId}`);
       
-      // Enable chat with mentor
-      addPurchase(pack.id);
+      const orderResponse = await fetch(getApiUrl('api/payments/razorpay/order'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          courseId: courseId,
+        }),
+      });
 
-      Alert.alert(
-        'Payment Successful! 🎉',
-        'You now have access to all lessons in this pack.',
-        [
-          {
-            text: 'Start Learning',
-            onPress: () => {
-              navigation.reset({
-                index: 1,
-                routes: [
-                  { name: 'Main', params: { screen: 'Library' } },
-                  { name: 'PackDetail', params: { packId: pack.id } },
-                ],
-              });
-            },
-          },
-        ]
-      );
-    }, 2000);
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.error || 'Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
+      const { key, order, enrollmentId } = orderData;
+
+      // Step 2: Open Razorpay Checkout
+      const options = {
+        description: pack.title,
+        image: pack.thumbnailUrl,
+        currency: 'INR',
+        key: key, // Razorpay key from backend
+        amount: order.amount, // Use exact amount from backend order
+        name: 'Gretex Music Room',
+        order_id: order.id, // Order ID from backend
+        prefill: {
+          email: user.email || '',
+          contact: '', // Add user phone if available
+          name: user.name || '',
+        },
+        theme: { color: '#7c3aed' },
+      };
+
+      const razorpayData = await RazorpayCheckout.open(options);
+
+      // Step 4: Extract payment details from Razorpay response
+      const razorpay_payment_id = razorpayData.razorpay_payment_id;
+      const razorpay_order_id = razorpayData.razorpay_order_id;
+      const razorpay_signature = razorpayData.razorpay_signature;
+
+      // Step 5: Verify payment with backend
+      const verifyResponse = await fetch(getApiUrl('api/payments/razorpay/verify'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          razorpay_payment_id,
+          razorpay_order_id,
+          razorpay_signature,
+          enrollmentId: enrollmentId, // Include enrollmentId from order creation
+        }),
+      });
+
+      const verifyData = await verifyResponse.json();
+      console.log('Verification response:', JSON.stringify(verifyData, null, 2));
+
+      if (!verifyResponse.ok) {
+        throw new Error(verifyData.error || 'Payment verification failed');
+      }
+
+      setProcessing(false);
+
+      // Step 6: Check verification result
+      if (verifyData.success === true) {
+        // Update local state on successful payment
+        addPack(pack);
+        addPurchase(pack.id);
+
+        // Navigate to PaymentSuccess screen
+        navigation.navigate('PaymentSuccess' as never);
+      } else {
+        // Verification failed
+        Alert.alert('Verification Failed', 'Verification failed. Please try again.');
+      }
+    } catch (error: any) {
+      setProcessing(false);
+
+      // Handle Razorpay checkout cancellation
+      if (error.code === 'BAD_REQUEST_ERROR' || error.description === 'userCancelled') {
+        Alert.alert('Payment Cancelled', 'You cancelled the payment process.');
+        return;
+      }
+
+      // Handle other errors
+      const errorMessage = error.message || 'Payment failed. Please try again.';
+      Alert.alert('Payment Error', errorMessage);
+      console.error('Payment error:', error);
+    }
   };
 
   const tax = Math.round(pack.price * 0.18); // 18% GST

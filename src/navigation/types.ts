@@ -10,6 +10,7 @@ export type RootStackParamList = {
   EditProfile: undefined;
   NotificationSettings: undefined;
   Chat: { mentorName: string; packTitle: string; packId: string };
+  PaymentSuccess: undefined;
 };
 
 export type AuthStackParamList = {

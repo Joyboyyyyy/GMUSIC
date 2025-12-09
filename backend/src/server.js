@@ -19,11 +19,11 @@ async function startServer() {
   try {
     await testDatabaseConnection();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log('\n🚀 Gretex Music Room API Server');
-      console.log(`📡 Server running on http://localhost:${PORT}`);
+      console.log(`📡 Server running on http://192.168.100.40:${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📚 API Documentation: http://localhost:${PORT}/health`);
+      console.log(`📚 API Documentation: http://192.168.100.40:${PORT}/health`);
       console.log('\n✨ Ready to serve music education!\n');
     });
   } catch (error) {

@@ -15,9 +15,20 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      "expo-dev-client"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gretexmusicroom.app"
+      "bundleIdentifier": "com.gretexmusicroom.app",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "razorpay",
+          "tez",
+          "phonepe",
+          "paytmmp"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,6 +39,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1fbc2dfb-9dbd-4f70-9059-0115a156ff04"
+      }
     }
   }
 }

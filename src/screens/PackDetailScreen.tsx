@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,7 +15,6 @@ import { RootStackParamList } from '../navigation/types';
 import { mockPacks, mockTracks } from '../data/mockData';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
-import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 
 type PackDetailScreenRouteProp = RouteProp<RootStackParamList, 'PackDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -27,12 +25,10 @@ const PackDetailScreen = () => {
   const { packId } = route.params;
   const { isAuthenticated } = useAuthStore();
   const { hasPack } = useLibraryStore();
-  const { canChat } = usePurchasedCoursesStore();
 
   const pack = mockPacks.find((p) => p.id === packId);
   const tracks = mockTracks[packId] || [];
   const isPurchased = hasPack(packId);
-  const canChatWithMentor = canChat(packId);
 
   if (!pack) {
     return (
@@ -70,14 +66,6 @@ const PackDetailScreen = () => {
     } else {
       Alert.alert('Premium Content', 'Purchase this pack to access all lessons');
     }
-  };
-
-  const handleChatWithMentor = () => {
-    navigation.navigate('Chat', {
-      mentorName: pack.teacher.name,
-      packTitle: pack.title,
-      packId: packId,
-    });
   };
 
   return (
@@ -208,27 +196,12 @@ const PackDetailScreen = () => {
         </View>
       )}
 
-      {isPurchased && !canChatWithMentor && (
-        <View style={styles.lockedChatContainer}>
-          <View style={styles.lockedChatCard}>
-            <Ionicons name="lock-closed" size={24} color="#7c3aed" />
-            <Text style={styles.lockedChatText}>
-              🔒 Purchase this course to unlock chat with your mentor
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {isPurchased && canChatWithMentor && (
-        <View style={styles.bottomBar}>
+      {isPurchased && (
+        <View style={styles.bottomBarPurchased}>
           <View style={styles.purchasedBadge}>
             <Ionicons name="checkmark-circle" size={24} color="#10b981" />
             <Text style={styles.purchasedText}>Purchased</Text>
           </View>
-          <TouchableOpacity style={styles.chatButton} onPress={handleChatWithMentor}>
-            <Ionicons name="chatbubbles" size={20} color="#fff" />
-            <Text style={styles.chatButtonText}>Chat with Mentor</Text>
-          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -428,6 +401,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10,
   },
+  bottomBarPurchased: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
   priceLabel: {
     fontSize: 12,
     color: '#6b7280',
@@ -461,42 +448,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#10b981',
-  },
-  chatButton: {
-    flexDirection: 'row',
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    gap: 8,
-  },
-  chatButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  lockedChatContainer: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  lockedChatCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  lockedChatText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
   },
 });
 

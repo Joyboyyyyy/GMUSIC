@@ -8,6 +8,7 @@ import CheckoutScreen from '../screens/CheckoutScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationSettingsScreen from '../screens/settings/NotificationSettingsScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
+import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -85,6 +86,19 @@ const RootNavigator = () => {
         component={ChatScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="PaymentSuccess" 
+        component={PaymentSuccessScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Payment Success',
+          headerStyle: {
+            backgroundColor: '#10b981',
+          },
+          headerTintColor: '#fff',
+          headerLeft: () => null, // Disable back button
         }}
       />
     </Stack.Navigator>
