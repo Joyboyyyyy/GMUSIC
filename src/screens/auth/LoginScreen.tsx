@@ -25,8 +25,7 @@ const LoginScreen = () => {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle, loginWithApple } = useAuthStore();
+  const { login, loginWithCredentials, loginWithGoogle, loginWithApple, redirectPath, clearRedirectPath, loading } = useAuthStore();
 
   // Google OAuth configuration
   const [request, response, promptAsync] = Google.useAuthRequest({
@@ -40,32 +39,64 @@ const LoginScreen = () => {
   }, [response]);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    setLoading(true);
     try {
-      await login(email, password);
-      // Navigate to Home after successful login
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        })
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Invalid email or password');
-    } finally {
-      setLoading(false);
+      const { user, token } = await loginWithCredentials(email, password);
+      
+      // Call login to store in SecureStore and set axios token
+      await login(user, token);
+      
+      // Handle redirect to originally requested screen
+      const currentRedirectPath = redirectPath;
+      if (currentRedirectPath) {
+        clearRedirectPath();
+        
+        const screenName = currentRedirectPath.name;
+        const screenParams = currentRedirectPath.params || {};
+        
+        // Protected tab screens (Library, Profile, Dashboard) are in MainNavigator
+        // Stack screens (Checkout, Chat, etc.) need to be navigated after Main
+        if (screenName === 'Library' || screenName === 'Profile' || screenName === 'Dashboard') {
+          // Navigate to Main tab navigator, then to the specific tab
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                { 
+                  name: 'Main', 
+                  params: { screen: screenName } 
+                }
+              ],
+            })
+          );
+        } else {
+          // For stack screens, navigate to Main first, then to the screen with params
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 1,
+              routes: [
+                { name: 'Main' },
+                { name: screenName as never, params: screenParams as never }
+              ],
+            })
+          );
+        }
+      } else {
+        // No redirect path: navigate to Main (Home tab)
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          })
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Login Failed', e.message);
     }
   };
 
   const handleGoogleLogin = async (accessToken?: string) => {
     if (!accessToken) return;
 
-    setLoading(true);
     try {
       const userInfoResponse = await fetch(
         'https://www.googleapis.com/userinfo/v2/me',
@@ -75,17 +106,51 @@ const LoginScreen = () => {
       );
       const googleUser = await userInfoResponse.json();
       loginWithGoogle(googleUser);
-      // Navigate to Home after successful Google login
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        })
-      );
+      
+      // Handle redirect if exists
+      const currentRedirectPath = redirectPath;
+      if (currentRedirectPath) {
+        clearRedirectPath();
+        
+        const screenName = currentRedirectPath.name;
+        const screenParams = currentRedirectPath.params || {};
+        
+        // Protected tab screens (Library, Profile, Dashboard) are in MainNavigator
+        if (screenName === 'Library' || screenName === 'Profile' || screenName === 'Dashboard') {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                { 
+                  name: 'Main', 
+                  params: { screen: screenName } 
+                }
+              ],
+            })
+          );
+        } else {
+          // For stack screens, navigate to Main first, then to the screen with params
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 1,
+              routes: [
+                { name: 'Main' },
+                { name: screenName as never, params: screenParams as never }
+              ],
+            })
+          );
+        }
+      } else {
+        // Navigate to Home after successful Google login
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          })
+        );
+      }
     } catch (error) {
       Alert.alert('Error', 'Google login failed');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -99,13 +164,49 @@ const LoginScreen = () => {
       });
 
       loginWithApple(credential);
-      // Navigate to Home after successful Apple login
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        })
-      );
+      
+      // Handle redirect if exists
+      const currentRedirectPath = redirectPath;
+      if (currentRedirectPath) {
+        clearRedirectPath();
+        
+        const screenName = currentRedirectPath.name;
+        const screenParams = currentRedirectPath.params || {};
+        
+        // Protected tab screens (Library, Profile, Dashboard) are in MainNavigator
+        if (screenName === 'Library' || screenName === 'Profile' || screenName === 'Dashboard') {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                { 
+                  name: 'Main', 
+                  params: { screen: screenName } 
+                }
+              ],
+            })
+          );
+        } else {
+          // For stack screens, navigate to Main first, then to the screen with params
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 1,
+              routes: [
+                { name: 'Main' },
+                { name: screenName as never, params: screenParams as never }
+              ],
+            })
+          );
+        }
+      } else {
+        // Navigate to Home after successful Apple login
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          })
+        );
+      }
     } catch (error: any) {
       if (error.code === 'ERR_CANCELED') {
         return;
@@ -154,16 +255,24 @@ const LoginScreen = () => {
               style={styles.input}
               placeholder="Enter your password"
               placeholderTextColor="#9ca3af"
+              secureTextEntry={true}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
             />
           </View>
 
           <TouchableOpacity
-            style={styles.button}
-            onPress={handleLogin}
-            disabled={loading}
+            style={[
+              styles.button,
+              (!email.trim() || !password.trim()) && { opacity: 0.5 },
+            ]}
+            disabled={!email.trim() || !password.trim() || loading}
+            onPress={() => {
+              if (!email.trim() || !password.trim()) {
+                return Alert.alert('Login Error', 'Please enter email and password.');
+              }
+              handleLogin();
+            }}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />

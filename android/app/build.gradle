@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.gretexmusicroom.app'
+    namespace 'com.rogerr6969.gretexmusicroom'
     defaultConfig {
-        applicationId 'com.gretexmusicroom.app'
+        applicationId 'com.rogerr6969.gretexmusicroom'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

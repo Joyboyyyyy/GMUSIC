@@ -1,16 +1,28 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { useAuthStore } from '../store/authStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const LoginRequired = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute();
+  const { setRedirectPath } = useAuthStore();
 
   const handleLoginPress = () => {
+    // Set redirect path with current screen name and params
+    const screenName = route.name;
+    const routeParams = (route.params as any) || {};
+    
+    setRedirectPath({
+      name: screenName,
+      params: routeParams,
+    });
+    
     navigation.navigate('Auth', { screen: 'Login' });
   };
 

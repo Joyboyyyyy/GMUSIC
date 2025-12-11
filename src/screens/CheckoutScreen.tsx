@@ -19,7 +19,10 @@ import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
+import { useCartStore, CartItem } from '../store/cartStore';
 import { getApiUrl } from '../config/api';
+import { MusicPack } from '../types';
+import { requireAuth } from '../utils/auth';
 
 type CheckoutScreenRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -27,27 +30,51 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const CheckoutScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<CheckoutScreenRouteProp>();
-  const { pack } = route.params;
+  const { pack, items } = route.params || {};
   const { user } = useAuthStore();
   const { addPack } = useLibraryStore();
-  const { addPurchase } = usePurchasedCoursesStore();
+  const { addPurchasedCourse } = usePurchasedCoursesStore();
+  const { clearCart, items: cartItems, getTotalPrice } = useCartStore();
   const [processing, setProcessing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'upi' | 'netbanking'>('card');
 
+  // Determine items to process: use route params items, or cart items, or single pack
+  const checkoutItems: CartItem[] = items || (pack ? [{
+    id: pack.id,
+    packId: pack.id,
+    title: pack.title,
+    price: pack.price,
+    thumbnailUrl: pack.thumbnailUrl,
+    teacher: { name: pack.teacher.name },
+  }] : cartItems);
+
+  // Calculate total from items
+  const subtotal = checkoutItems.reduce((sum, item) => sum + item.price, 0);
+  const tax = Math.round(subtotal * 0.18);
+  const total = subtotal + tax;
+
   const handlePayment = async () => {
-    if (!user) {
-      Alert.alert('Error', 'Please login to continue with payment');
+    if (checkoutItems.length === 0) {
+      Alert.alert('Error', 'No items to checkout');
       return;
     }
 
-    setProcessing(true);
+    requireAuth(
+      !!user,
+      navigation,
+      async () => {
+        // User is authenticated, proceed with payment
+        setProcessing(true);
 
     try {
       // Step 1: Create Razorpay order on backend
       // Get userId - use actual user ID or test UUID
       // Note: If user.id is not a valid UUID, backend will use test fallback
+      // For multiple items, we'll use the first item's courseId for now
+      // TODO: Backend should support multiple courses in one order
       const userId = user?.id || 'd211d2e3-32a0-412f-910d-0fa92ecbfde8'; // Test UUID fallback
-      const courseId = pack?.id || '7503bea9-90ba-450e-b052-687a7fef41bc'; // Test UUID fallback
+      const firstItem = checkoutItems[0];
+      const courseId = firstItem.packId || '7503bea9-90ba-450e-b052-687a7fef41bc'; // Test UUID fallback
       
       console.log(`Creating Razorpay order - userId: ${userId}, courseId: ${courseId}`);
       
@@ -71,9 +98,14 @@ const CheckoutScreen = () => {
       const { key, order, enrollmentId } = orderData;
 
       // Step 2: Open Razorpay Checkout
+      const description = checkoutItems.length > 1 
+        ? `${checkoutItems.length} Music Packs`
+        : checkoutItems[0].title;
+      const image = checkoutItems[0].thumbnailUrl;
+      
       const options = {
-        description: pack.title,
-        image: pack.thumbnailUrl,
+        description: description,
+        image: image,
         currency: 'INR',
         key: key, // Razorpay key from backend
         amount: order.amount, // Use exact amount from backend order
@@ -119,12 +151,31 @@ const CheckoutScreen = () => {
 
       // Step 6: Check verification result
       if (verifyData.success === true) {
-        // Update local state on successful payment
-        addPack(pack);
-        addPurchase(pack.id);
+        // Collect all packIds from checkout items
+        const purchasedPackIds = checkoutItems.map((item) => item.packId).filter(Boolean);
+        
+        // Update local state on successful payment for all items
+        if (purchasedPackIds.length > 0) {
+          // Add all purchased courses to store (deduplication handled in store)
+          purchasedPackIds.forEach((packId) => {
+            addPurchasedCourse(packId);
+          });
+        }
 
-        // Navigate to PaymentSuccess screen
-        navigation.navigate('PaymentSuccess' as never);
+        // Clear cart if items came from cart
+        if (items || cartItems.length > 0) {
+          clearCart();
+        }
+
+        // Navigate to PaymentSuccess screen with packId(s)
+        if (purchasedPackIds.length === 1) {
+          navigation.navigate('PaymentSuccess', { packId: purchasedPackIds[0] });
+        } else if (purchasedPackIds.length > 1) {
+          navigation.navigate('PaymentSuccess', { packIds: purchasedPackIds });
+        } else {
+          // Fallback if no packIds
+          navigation.navigate('PaymentSuccess', {});
+        }
       } else {
         // Verification failed
         Alert.alert('Verification Failed', 'Verification failed. Please try again.');
@@ -143,10 +194,11 @@ const CheckoutScreen = () => {
       Alert.alert('Payment Error', errorMessage);
       console.error('Payment error:', error);
     }
+      },
+      'Please login to continue with payment'
+    );
   };
 
-  const tax = Math.round(pack.price * 0.18); // 18% GST
-  const total = pack.price + tax;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,31 +220,24 @@ const CheckoutScreen = () => {
 
         {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          <View style={styles.orderCard}>
-            <Image
-              source={{ uri: pack.thumbnailUrl }}
-              style={styles.packThumbnail}
-            />
-            <View style={styles.packInfo}>
-              <Text style={styles.packTitle} numberOfLines={2}>
-                {pack.title}
-              </Text>
-              <Text style={styles.packTeacher}>{pack.teacher.name}</Text>
-              <View style={styles.packMeta}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="play-circle" size={14} color="#6b7280" />
-                  <Text style={styles.metaText}>{pack.tracksCount} lessons</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="time" size={14} color="#6b7280" />
-                  <Text style={styles.metaText}>
-                    {Math.floor(pack.duration / 60)}h {pack.duration % 60}m
-                  </Text>
-                </View>
+          <Text style={styles.sectionTitle}>
+            Order Summary ({checkoutItems.length} {checkoutItems.length === 1 ? 'item' : 'items'})
+          </Text>
+          {checkoutItems.map((item) => (
+            <View key={item.id} style={styles.orderCard}>
+              <Image
+                source={{ uri: item.thumbnailUrl }}
+                style={styles.packThumbnail}
+              />
+              <View style={styles.packInfo}>
+                <Text style={styles.packTitle} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <Text style={styles.packTeacher}>{item.teacher.name}</Text>
+                <Text style={styles.packPrice}>₹{item.price}</Text>
               </View>
             </View>
-          </View>
+          ))}
         </View>
 
         {/* Payment Method */}
@@ -262,8 +307,8 @@ const CheckoutScreen = () => {
           <Text style={styles.sectionTitle}>Price Details</Text>
           <View style={styles.priceCard}>
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Pack Price</Text>
-              <Text style={styles.priceValue}>₹{pack.price}</Text>
+              <Text style={styles.priceLabel}>Subtotal ({checkoutItems.length} {checkoutItems.length === 1 ? 'item' : 'items'})</Text>
+              <Text style={styles.priceValue}>₹{subtotal}</Text>
             </View>
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>GST (18%)</Text>
@@ -389,18 +434,11 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 8,
   },
-  packMeta: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#6b7280',
+  packPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#7c3aed',
+    marginTop: 4,
   },
   paymentOption: {
     flexDirection: 'row',

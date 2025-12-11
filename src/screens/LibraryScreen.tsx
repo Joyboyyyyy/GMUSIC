@@ -13,6 +13,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useLibraryStore } from '../store/libraryStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
+import { mockPacks } from '../data/mockData';
 import PackCard from '../components/PackCard';
 import ProtectedScreen from '../components/ProtectedScreen';
 
@@ -21,12 +23,22 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const LibraryScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { purchasedPacks } = useLibraryStore();
+  const { purchasedCourseIds } = usePurchasedCoursesStore();
+  
+  // Get purchased courses from mockPacks based on purchasedCourseIds
+  // This is the source of truth for purchased courses
+  const myPurchasedPacks = mockPacks.filter((pack) =>
+    purchasedCourseIds.includes(pack.id)
+  );
+  
+  // Use purchasedCourseIds as primary source, fallback to libraryStore for backward compatibility
+  const displayPacks = myPurchasedPacks.length > 0 ? myPurchasedPacks : purchasedPacks;
 
   const handlePackPress = (packId: string) => {
     navigation.navigate('PackDetail', { packId });
   };
 
-  if (purchasedPacks.length === 0) {
+  if (displayPacks.length === 0) {
     return (
       <ProtectedScreen>
         <SafeAreaView style={styles.container}>
@@ -59,7 +71,7 @@ const LibraryScreen = () => {
         <View style={styles.header}>
           <Text style={styles.title}>My Library</Text>
           <Text style={styles.subtitle}>
-            {purchasedPacks.length} {purchasedPacks.length === 1 ? 'pack' : 'packs'} purchased
+            {displayPacks.length} {displayPacks.length === 1 ? 'pack' : 'packs'} purchased
           </Text>
         </View>
 
@@ -69,7 +81,7 @@ const LibraryScreen = () => {
             <View style={styles.statIconContainer}>
               <Ionicons name="play-circle" size={24} color="#7c3aed" />
             </View>
-            <Text style={styles.statValue}>{purchasedPacks.length}</Text>
+            <Text style={styles.statValue}>{displayPacks.length}</Text>
             <Text style={styles.statLabel}>Active Packs</Text>
           </View>
           <View style={styles.statCard}>
@@ -78,7 +90,7 @@ const LibraryScreen = () => {
             </View>
             <Text style={styles.statValue}>
               {Math.floor(
-                purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60
+                displayPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60
               )}h
             </Text>
             <Text style={styles.statLabel}>Total Content</Text>
@@ -102,7 +114,7 @@ const LibraryScreen = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalScroll}
           >
-            {purchasedPacks.map((pack) => (
+            {displayPacks.map((pack) => (
               <PackCard
                 key={pack.id}
                 pack={pack}
@@ -118,7 +130,7 @@ const LibraryScreen = () => {
             <Text style={styles.sectionTitle}>All My Packs</Text>
           </View>
           <FlatList
-            data={purchasedPacks}
+            data={displayPacks}
             keyExtractor={(item) => item.id}
             numColumns={2}
             contentContainerStyle={styles.grid}

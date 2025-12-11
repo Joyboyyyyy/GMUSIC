@@ -1,17 +1,50 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
+
+type PaymentSuccessScreenRouteProp = RouteProp<RootStackParamList, 'PaymentSuccess'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const PaymentSuccessScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<PaymentSuccessScreenRouteProp>();
+  const { packId, packIds } = route.params || {};
+  const { addPurchasedCourse, addPurchasedCourses } = usePurchasedCoursesStore();
+
+  useEffect(() => {
+    // Add purchased course(s) to store when screen loads
+    if (packIds && packIds.length > 0) {
+      // Multiple courses purchased
+      packIds.forEach((id) => {
+        if (id) {
+          addPurchasedCourse(id);
+        }
+      });
+    } else if (packId) {
+      // Single course purchased
+      addPurchasedCourse(packId);
+    } else {
+      // Fallback: packId not provided
+      console.warn('PaymentSuccessScreen: No packId or packIds provided');
+      Alert.alert(
+        'Warning',
+        'Purchase recorded, but course ID was not provided. Please contact support if you do not see your course in the library.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [packId, packIds, addPurchasedCourse]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,19 +67,45 @@ const PaymentSuccessScreen = () => {
           <TouchableOpacity
             style={styles.button}
             onPress={() => {
+              // Navigate to Dashboard to see purchased courses
+              navigation.reset({
+                index: 0,
+                routes: [
+                  { name: 'Main' as never, params: { screen: 'Dashboard' } },
+                ],
+              });
+            }}
+          >
+            <Text style={styles.buttonText}>Go to Dashboard</Text>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+
+          {packId && (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => {
+                // Navigate to the purchased pack detail
+                navigation.reset({
+                  index: 0,
+                  routes: [
+                    { name: 'Main' as never },
+                    { name: 'PackDetail' as never, params: { packId } },
+                  ],
+                });
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>View Course</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => {
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Main' as never }],
               });
             }}
-          >
-            <Text style={styles.buttonText}>Go to Library</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.goBack()}
           >
             <Text style={styles.secondaryButtonText}>Back to Home</Text>
           </TouchableOpacity>

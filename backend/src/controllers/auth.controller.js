@@ -64,3 +64,20 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+export const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return errorResponse(res, 'Verification token is required', 400);
+    }
+
+    const result = await authService.verifyEmail(token);
+
+    return successResponse(res, result, 'Email verified successfully');
+  } catch (error) {
+    console.error('Verify email error:', error);
+    return errorResponse(res, error.message || 'Email verification failed', 400);
+  }
+};
+

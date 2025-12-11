@@ -12,11 +12,12 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 
-type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
+type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 interface Props {
   navigation: SignupScreenNavigationProp;
@@ -27,32 +28,42 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { signup } = useAuthStore();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { signup, loading } = useAuthStore();
+
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{6,}$/;
+
+  const rules = {
+    hasLower: /[a-z]/.test(password),
+    hasUpper: /[A-Z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecial: /[@$!%*?&._-]/.test(password),
+    hasLength: password.length >= 6,
+  };
+
+  const passwordValid =
+    rules.hasLower &&
+    rules.hasUpper &&
+    rules.hasNumber &&
+    rules.hasSpecial &&
+    rules.hasLength;
 
   const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-
-    setLoading(true);
     try {
-      await signup(name, email, password);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create account');
-    } finally {
-      setLoading(false);
+      const result = await signup(name, email, password);
+      
+      if (!result.emailVerified) {
+        // Navigate to VerifyEmail screen if email is not verified
+        (navigation as any).navigate('VerifyEmail', { email: result.email });
+        return;
+      }
+      
+      // Email is verified, navigate to Main
+      (navigation as any).navigate('Main');
+    } catch (e: any) {
+      Alert.alert('Signup Failed', e.message);
     }
   };
 
@@ -99,32 +110,102 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Create a password"
-                placeholderTextColor="#9ca3af"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={[styles.input, { paddingRight: 48 }]}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeWrapper}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye' : 'eye-off'}
+                    size={22}
+                    color="#6b7280"
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={{ marginTop: 8, marginBottom: 4 }}>
+                <Text style={rules.hasLower ? styles.ruleOk : styles.ruleBad}>
+                  {rules.hasLower ? '✔' : '✘'}  1 lowercase letter
+                </Text>
+                <Text style={rules.hasUpper ? styles.ruleOk : styles.ruleBad}>
+                  {rules.hasUpper ? '✔' : '✘'}  1 uppercase letter
+                </Text>
+                <Text style={rules.hasNumber ? styles.ruleOk : styles.ruleBad}>
+                  {rules.hasNumber ? '✔' : '✘'}  1 number
+                </Text>
+                <Text style={rules.hasSpecial ? styles.ruleOk : styles.ruleBad}>
+                  {rules.hasSpecial ? '✔' : '✘'}  1 special character (@$!%*?&._-)
+                </Text>
+                <Text style={rules.hasLength ? styles.ruleOk : styles.ruleBad}>
+                  {rules.hasLength ? '✔' : '✘'}  Minimum 6 characters
+                </Text>
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm your password"
-                placeholderTextColor="#9ca3af"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={[styles.input, { paddingRight: 48 }]}
+                  placeholder="Confirm password"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showConfirmPassword}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeWrapper}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye' : 'eye-off'}
+                    size={22}
+                    color="#6b7280"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
-              style={styles.button}
-              onPress={handleSignup}
-              disabled={loading}
+              style={[
+                styles.button,
+                (!name.trim() ||
+                  !email.trim() ||
+                  !passwordValid ||
+                  confirmPassword !== password) && { opacity: 0.5 },
+              ]}
+              disabled={
+                !name.trim() ||
+                !email.trim() ||
+                !passwordValid ||
+                confirmPassword !== password ||
+                loading
+              }
+              onPress={() => {
+                if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+                  return Alert.alert('Signup Error', 'All fields are required.');
+                }
+
+                if (!passwordRegex.test(password)) {
+                  return Alert.alert(
+                    'Weak Password',
+                    'Password must contain:\n• 1 uppercase\n• 1 lowercase\n• 1 number\n• 1 special character\n• Minimum 6 characters'
+                  );
+                }
+
+                if (password !== confirmPassword) {
+                  return Alert.alert('Signup Error', 'Passwords do not match.');
+                }
+
+                handleSignup();
+              }}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -197,6 +278,28 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: '#1f2937',
+  },
+  inputWrapper: {
+    position: 'relative',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  eyeWrapper: {
+    position: 'absolute',
+    right: 12,
+    padding: 6,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+  },
+  ruleOk: {
+    color: '#10b981',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  ruleBad: {
+    color: '#ef4444',
+    fontSize: 13,
+    marginBottom: 2,
   },
   button: {
     backgroundColor: '#1f2937',

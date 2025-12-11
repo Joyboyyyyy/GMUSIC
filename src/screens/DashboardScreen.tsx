@@ -15,6 +15,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
 import { useTipsStore } from '../store/tipsStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 import { mockPacks } from '../data/mockData';
 import PackCard from '../components/PackCard';
 import ProtectedScreen from '../components/ProtectedScreen';
@@ -25,16 +26,34 @@ const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuthStore();
   const { purchasedPacks } = useLibraryStore();
+  const { purchasedCourseIds } = usePurchasedCoursesStore();
   const { currentTip, loadDailyTip, getNewTip } = useTipsStore();
 
   useEffect(() => {
     loadDailyTip();
   }, []);
 
+  // Get purchased courses from mockPacks based on purchasedCourseIds
+  const myPurchasedCourses = mockPacks.filter((pack) =>
+    purchasedCourseIds.includes(pack.id)
+  );
+
+  // Extract unique mentors from purchased courses
+  const uniqueMentors = Array.from(
+    new Map(
+      myPurchasedCourses.map((course) => [course.teacher.id, course.teacher])
+    ).values()
+  );
+
   const recommendedPacks = mockPacks.slice(0, 5);
 
+  // Use purchased courses for continue learning, fallback to library store
   const continueLearningPack =
-    purchasedPacks.length > 0 ? purchasedPacks[0] : null;
+    myPurchasedCourses.length > 0
+      ? myPurchasedCourses[0]
+      : purchasedPacks.length > 0
+      ? purchasedPacks[0]
+      : null;
 
   const progressPercentage = 35;
 
@@ -201,6 +220,51 @@ const DashboardScreen = () => {
               <Text style={styles.tipText}>{currentTip || 'Loading tip...'}</Text>
             </View>
           </View>
+
+          {/* Your Mentors - Show only if user has purchased courses */}
+          {uniqueMentors.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Your Mentors</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                {uniqueMentors.map((mentor) => {
+                  // Find a course from this mentor to get thumbnail
+                  const mentorCourse = myPurchasedCourses.find(
+                    (c) => c.teacher.id === mentor.id
+                  );
+                  return (
+                    <TouchableOpacity
+                      key={mentor.id}
+                      style={styles.mentorCard}
+                      onPress={() => {
+                        // Navigate to first course from this mentor
+                        if (mentorCourse) {
+                          handlePackPress(mentorCourse.id);
+                        }
+                      }}
+                    >
+                      <Image
+                        source={{ uri: mentor.avatarUrl }}
+                        style={styles.mentorAvatar}
+                      />
+                      <Text style={styles.mentorName} numberOfLines={1}>
+                        {mentor.name}
+                      </Text>
+                      <View style={styles.mentorStats}>
+                        <Ionicons name="star" size={12} color="#fbbf24" />
+                        <Text style={styles.mentorRating}>
+                          {mentor.rating.toFixed(1)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Recommended for You */}
           <View style={styles.section}>
@@ -414,6 +478,45 @@ const styles = StyleSheet.create({
   /* --- Recommended --- */
   horizontalScroll: {
     paddingHorizontal: 20,
+  },
+
+  /* --- Your Mentors --- */
+  mentorCard: {
+    width: 120,
+    marginRight: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mentorAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 8,
+    backgroundColor: '#e5e7eb',
+  },
+  mentorName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  mentorStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  mentorRating: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
   },
 });
 

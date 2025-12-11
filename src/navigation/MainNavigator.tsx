@@ -6,6 +6,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import BrowseScreen from '../screens/BrowseScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import CartIcon from '../components/CartIcon';
 import { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -14,7 +15,15 @@ const MainNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#fff',
+        },
+        headerTintColor: '#1f2937',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        headerRight: () => <CartIcon />,
         tabBarActiveTintColor: '#7c3aed',
         tabBarInactiveTintColor: '#9ca3af',
         tabBarStyle: {
@@ -47,6 +56,7 @@ const MainNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
+          headerRight: () => null, // No cart icon on Dashboard as per requirements
         }}
       />
       <Tab.Screen

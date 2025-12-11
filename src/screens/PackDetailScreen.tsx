@@ -15,6 +15,9 @@ import { RootStackParamList } from '../navigation/types';
 import { mockPacks, mockTracks } from '../data/mockData';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
+import { useCartStore, CartItem } from '../store/cartStore';
+import { requireAuth } from '../utils/auth';
 
 type PackDetailScreenRouteProp = RouteProp<RootStackParamList, 'PackDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -25,10 +28,13 @@ const PackDetailScreen = () => {
   const { packId } = route.params;
   const { isAuthenticated } = useAuthStore();
   const { hasPack } = useLibraryStore();
+  const { hasPurchased } = usePurchasedCoursesStore();
+  const { addToCart } = useCartStore();
 
   const pack = mockPacks.find((p) => p.id === packId);
   const tracks = mockTracks[packId] || [];
-  const isPurchased = hasPack(packId);
+  // Check both stores for backward compatibility
+  const isPurchased = hasPurchased(packId) || hasPack(packId);
 
   if (!pack) {
     return (
@@ -38,34 +44,69 @@ const PackDetailScreen = () => {
     );
   }
 
-  const handleBuyNow = () => {
-    if (!isAuthenticated) {
-      Alert.alert(
-        'Login Required',
-        'Please login to purchase this lesson pack',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Login',
-            onPress: () => navigation.navigate('Auth', { screen: 'Login' }),
-          },
-        ]
-      );
-      return;
-    }
+  const handleAddToCart = () => {
+    const cartItem: CartItem = {
+      id: `${pack.id}-${Date.now()}`,
+      packId: pack.id,
+      title: pack.title,
+      price: pack.price,
+      thumbnailUrl: pack.thumbnailUrl,
+      teacher: {
+        name: pack.teacher.name,
+      },
+    };
+    addToCart(cartItem);
+    Alert.alert('Added to Cart', `${pack.title} has been added to your cart`);
+  };
 
-    navigation.navigate('Checkout', { pack });
+  const handleBuyNow = () => {
+    requireAuth(
+      isAuthenticated,
+      navigation,
+      () => {
+        navigation.navigate('Checkout', { pack });
+      },
+      'Please login to purchase this lesson pack',
+      { name: 'Checkout', params: { pack } }
+    );
   };
 
   const handleTrackPress = (trackId: string) => {
     const track = tracks.find((t) => t.id === trackId);
     if (!track) return;
 
-    if (track.isPreview || isPurchased) {
+    // Preview tracks are always accessible
+    if (track.isPreview) {
       navigation.navigate('TrackPlayer', { packId, trackId });
-    } else {
-      Alert.alert('Premium Content', 'Purchase this pack to access all lessons');
+      return;
     }
+
+    // Purchased tracks are accessible to authenticated users
+    if (isPurchased) {
+      navigation.navigate('TrackPlayer', { packId, trackId });
+      return;
+    }
+
+    // Non-preview, non-purchased tracks require authentication
+    requireAuth(
+      isAuthenticated,
+      navigation,
+      () => {
+        // After login, user can purchase or access if already purchased
+        Alert.alert(
+          'Premium Content',
+          'Purchase this pack to access all lessons',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Buy Now',
+              onPress: () => navigation.navigate('Checkout', { pack }),
+            },
+          ]
+        );
+      },
+      'Please login to access this lesson'
+    );
   };
 
   return (
@@ -189,10 +230,16 @@ const PackDetailScreen = () => {
             <Text style={styles.priceLabel}>Price</Text>
             <Text style={styles.price}>₹{pack.price}</Text>
           </View>
-          <TouchableOpacity style={styles.buyButton} onPress={handleBuyNow}>
-            <Text style={styles.buyButtonText}>Buy Now</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
+              <Ionicons name="cart-outline" size={20} color="#7c3aed" />
+              <Text style={styles.addToCartButtonText}>Add to Cart</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.buyButton} onPress={handleBuyNow}>
+              <Text style={styles.buyButtonText}>Buy Now</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -388,9 +435,6 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
   bottomBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
@@ -400,6 +444,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 10,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  addToCartButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#7c3aed',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  addToCartButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#7c3aed',
   },
   bottomBarPurchased: {
     flexDirection: 'row',

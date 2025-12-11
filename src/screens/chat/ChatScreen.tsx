@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/types';
+import ProtectedScreen from '../../components/ProtectedScreen';
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, 'Chat'>;
 
@@ -91,9 +92,10 @@ const ChatScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <ProtectedScreen routeName="Chat">
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
@@ -141,6 +143,7 @@ const ChatScreen = () => {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </ProtectedScreen>
   );
 };
 

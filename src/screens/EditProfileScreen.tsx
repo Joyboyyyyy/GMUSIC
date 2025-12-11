@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,9 @@ const EditProfileScreen = () => {
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
   const [loading, setLoading] = useState(false);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [showCheckmark, setShowCheckmark] = useState(false);
+  const checkmarkScale = React.useRef(new Animated.Value(0)).current;
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,8 +44,8 @@ const EditProfileScreen = () => {
   const handlePickImage = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
+
+      if (!permissionResult.granted) {
         Alert.alert('Permission Required', 'Please allow access to your photo library');
         return;
       }
@@ -50,11 +54,34 @@ const EditProfileScreen = () => {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.9,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setAvatar(result.assets[0].uri);
+        const imageUri = result.assets[0].uri;
+        setPendingImage(imageUri);
+        setAvatar(imageUri);
+        
+        // Show confirmation checkmark
+        setShowCheckmark(true);
+        Animated.spring(checkmarkScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 7,
+        }).start();
+
+        // Hide checkmark after 2 seconds
+        setTimeout(() => {
+          Animated.spring(checkmarkScale, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7,
+          }).start(() => {
+            setShowCheckmark(false);
+          });
+        }, 2000);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick image');
@@ -62,7 +89,6 @@ const EditProfileScreen = () => {
   };
 
   const handleSave = async () => {
-    // Validation
     if (!name.trim()) {
       Alert.alert('Validation Error', 'Name cannot be empty');
       return;
@@ -87,16 +113,9 @@ const EditProfileScreen = () => {
         avatar,
       });
 
-      Alert.alert(
-        'Success! 🎉',
-        'Your profile has been updated successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      Alert.alert('Success! 🎉', 'Your profile has been updated successfully', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
@@ -106,7 +125,7 @@ const EditProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
+        <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
@@ -124,6 +143,21 @@ const EditProfileScreen = () => {
               <View style={styles.cameraIcon}>
                 <Ionicons name="camera" size={20} color="#fff" />
               </View>
+              {/* Confirmation Checkmark Overlay */}
+              {showCheckmark && (
+                <Animated.View
+                  style={[
+                    styles.checkmarkOverlay,
+                    {
+                      transform: [{ scale: checkmarkScale }],
+                    },
+                  ]}
+                >
+                  <View style={styles.checkmarkCircle}>
+                    <Ionicons name="checkmark" size={40} color="#fff" />
+                  </View>
+                </Animated.View>
+              )}
             </TouchableOpacity>
             <Text style={styles.photoHint}>Tap to change photo</Text>
           </View>
@@ -215,6 +249,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+
   photoSection: {
     alignItems: 'center',
     paddingVertical: 32,
@@ -253,6 +288,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 16,
   },
+
   inputCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -321,7 +357,8 @@ const styles = StyleSheet.create({
   saveButton: {
     flexDirection: 'row',
     backgroundColor: '#7c3aed',
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -332,7 +369,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  checkmarkOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 60,
+    backgroundColor: 'rgba(124, 58, 237, 0.8)',
+  },
+  checkmarkCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#10b981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
 });
 
 export default EditProfileScreen;
-

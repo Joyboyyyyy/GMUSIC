@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "skipLibCheck": true,
+    "noEmit": true,
     "typeRoots": ["./src/types", "./node_modules/@types"],
     "paths": {
       "@/*": ["./src/*"]

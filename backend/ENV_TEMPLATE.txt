@@ -15,6 +15,10 @@ DATABASE_URL="postgresql://user:password@localhost:5432/gretex_music_room"
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=7d
 
+# Password Security
+# Pepper for password hashing (add to password before hashing with Argon2id)
+PASSWORD_PEPPER=YourStrongSecretPepperKey123!!
+
 # Zoho CRM Configuration
 # Get these from Zoho Developer Console
 ZOHO_CLIENT_ID=your_zoho_client_id
@@ -38,6 +42,16 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASSWORD=your_app_specific_password
+
+# Email Service (SMTP for email verification)
+SMTP_HOST=mail.gretexindustries.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=info@gretexindustries.com
+SMTP_PASS=YOUR_SMTP_PASSWORD
+EMAIL_FROM=info@gretexindustries.com
+BACKEND_URL=http://192.168.100.40:3000
+APP_SCHEME=gretexmusicroom://
 
 # ========================================
 # COPY THIS FILE TO .env AND FILL IN VALUES

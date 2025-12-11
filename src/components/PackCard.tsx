@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MusicPack } from '../types';
+import { useCartStore, CartItem } from '../store/cartStore';
 
 interface PackCardProps {
   pack: MusicPack;
@@ -10,6 +11,24 @@ interface PackCardProps {
 }
 
 const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
+  const { addToCart } = useCartStore();
+
+  const handleAddToCart = (e: any) => {
+    e.stopPropagation();
+    const cartItem: CartItem = {
+      id: `${pack.id}-${Date.now()}`,
+      packId: pack.id,
+      title: pack.title,
+      price: pack.price,
+      thumbnailUrl: pack.thumbnailUrl,
+      teacher: {
+        name: pack.teacher.name,
+      },
+    };
+    addToCart(cartItem);
+    Alert.alert('Added to Cart', `${pack.title} has been added to your cart`);
+  };
+
   return (
     <TouchableOpacity style={[styles.container, fullWidth && styles.fullWidthContainer]} onPress={onPress}>
       <Image source={{ uri: pack.thumbnailUrl }} style={styles.thumbnail} />
@@ -34,6 +53,10 @@ const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
             <Text style={styles.badgeText}>{pack.tracksCount} lessons</Text>
           </View>
         </View>
+        <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
+          <Ionicons name="cart-outline" size={14} color="#fff" />
+          <Text style={styles.addToCartText}>Add to Cart</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -115,6 +138,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6b7280',
     fontWeight: '500',
+  },
+  addToCartButton: {
+    flexDirection: 'row',
+    backgroundColor: '#7c3aed',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  addToCartText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 
