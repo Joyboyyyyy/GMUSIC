@@ -32,6 +32,12 @@ const CheckoutScreen = () => {
   const route = useRoute<CheckoutScreenRouteProp>();
   const { pack, items } = route.params || {};
   const { user } = useAuthStore();
+
+  // User must exist for checkout
+  if (!user) {
+    return null; // or navigate to login if needed
+  }
+
   const { addPack } = useLibraryStore();
   const { addPurchasedCourse } = usePurchasedCoursesStore();
   const { clearCart, items: cartItems, getTotalPrice } = useCartStore();

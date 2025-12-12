@@ -1,9 +1,10 @@
 import argon2 from 'argon2';
 import { v4 as uuidv4 } from 'uuid';
 import { add } from 'date-fns';
+import crypto from 'crypto';
 import prisma from '../config/prismaClient.js';
 import { generateToken } from '../utils/jwt.js';
-import { sendVerificationEmail } from '../utils/email.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../utils/email.js';
 
 class AuthService {
   async register(userData) {
@@ -228,6 +229,123 @@ class AuthService {
     });
 
     return { message: 'Email verified successfully' };
+  }
+
+  async forgotPassword(email) {
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    // Don't reveal if user exists or not (security best practice)
+    if (!user) {
+      // Return success even if user doesn't exist to prevent email enumeration
+      return { message: 'If your email is registered, you will receive a reset link.' };
+    }
+
+    // Generate random token (32 bytes = 256 bits)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    
+    // Hash token with SHA-256 before storing
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    
+    // Set expiry to 15 minutes from now
+    const resetTokenExpiry = add(new Date(), { minutes: 15 });
+
+    // Update user with reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken: hashedToken,
+        resetTokenExpiry: resetTokenExpiry,
+      },
+    });
+
+    // Send password reset email with raw token (for the link)
+    await sendPasswordResetEmail(user.email, rawToken);
+
+    return { message: 'If your email is registered, you will receive a reset link.' };
+  }
+
+  async resetPassword(token, newPassword) {
+    // Hash the provided token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with matching reset token
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: hashedToken,
+      },
+      select: {
+        id: true,
+        resetTokenExpiry: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    // Check if token has expired
+    const now = new Date();
+    if (!user.resetTokenExpiry || now > user.resetTokenExpiry) {
+      // Clear expired token
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetToken: null,
+          resetTokenExpiry: null,
+        },
+      });
+      throw new Error('Reset token has expired. Please request a new one.');
+    }
+
+    // Validate password strength server-side
+    if (newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      throw new Error('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      throw new Error('Password must contain at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      throw new Error('Password must contain at least one number');
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      throw new Error('Password must contain at least one special character');
+    }
+
+    // Hash new password with Argon2id
+    const pepper = process.env.PASSWORD_PEPPER;
+    const hashedPassword = await argon2.hash(newPassword + pepper, {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 16, // 64MB
+      timeCost: 3,
+      parallelism: 1,
+    });
+
+    // Update password and clear reset token fields
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+        // Reset failed login attempts on password reset
+        failedLoginAttempts: 0,
+        isLockedUntil: null,
+        lastFailedLogin: null,
+      },
+    });
+
+    return { message: 'Password reset successfully' };
   }
 }
 

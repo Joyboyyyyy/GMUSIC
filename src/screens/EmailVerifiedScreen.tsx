@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from '../store/authStore';
 import api from '../utils/api';
+import { RootStackParamList } from '../navigation/types';
 
 const PENDING_EMAIL_KEY = 'pendingEmail';
 
+type EmailVerifiedScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EmailVerified'>;
+
 const EmailVerifiedScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<EmailVerifiedScreenNavigationProp>();
   const route = useRoute();
   const { fetchMe } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -29,7 +33,7 @@ const EmailVerifiedScreen = () => {
       if (!email) {
         // No pending email found, navigate to VerifyEmail or Login
         Alert.alert('No Pending Verification', 'No email verification in progress.');
-        navigation.navigate('Auth' as never, { screen: 'Login' } as never);
+        navigation.navigate('Auth', { screen: 'Login' });
         return;
       }
 
@@ -47,13 +51,13 @@ const EmailVerifiedScreen = () => {
         
         // Navigate to Main
         Alert.alert('Success', 'Email verified successfully!');
-        navigation.navigate('Main' as never);
+        navigation.navigate('Main', {} as any);
       } else {
         // Email not verified yet, navigate back to VerifyEmail
-        navigation.navigate('Auth' as never, { 
+        navigation.navigate('Auth', { 
           screen: 'VerifyEmail', 
           params: { email } 
-        } as never);
+        });
       }
     } catch (err: any) {
       console.error('Verification check error:', err);
@@ -63,15 +67,21 @@ const EmailVerifiedScreen = () => {
       try {
         const email = await SecureStore.getItemAsync(PENDING_EMAIL_KEY);
         if (email) {
-          navigation.navigate('Auth' as never, { 
+          navigation.navigate('Auth', { 
             screen: 'VerifyEmail', 
             params: { email } 
-          } as never);
+          });
         } else {
-          navigation.navigate('Auth' as never, { screen: 'Login' } as never);
+          navigation.navigate('Auth', { screen: 'Login' });
         }
       } catch {
-        navigation.navigate('Auth' as never, { screen: 'Login' } as never);
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: "Auth" as never }],
+          })
+        );
+        navigation.navigate("Login" as never);
       }
     } finally {
       setLoading(false);

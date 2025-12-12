@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../navigation/types';
+import { AuthStackParamList, RootStackParamList } from '../../navigation/types';
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
@@ -216,7 +216,11 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.linkButton}
-              onPress={() => navigation.navigate('Login')}
+              onPress={() =>
+                (navigation as any).navigate("Auth", {
+                  screen: "Login",
+                } as never)
+              }
             >
               <Text style={styles.linkText}>
                 Already have an account? <Text style={styles.linkTextBold}>Login</Text>

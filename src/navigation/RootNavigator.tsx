@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
-import AuthNavigator from './AuthNavigator';
+import { AuthNavigator } from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import PackDetailScreen from '../screens/PackDetailScreen';
 import TrackPlayerScreen from '../screens/TrackPlayerScreen';
@@ -19,8 +20,10 @@ import { useAuthStore } from '../store/authStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+type RootNav = NativeStackNavigationProp<RootStackParamList>;
+
 const RootNavigator = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RootNav>();
   const { user, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
@@ -29,13 +32,34 @@ const RootNavigator = () => {
       
       // Handle email-verified deep link
       if (url.includes('email-verified')) {
-        navigation.navigate('EmailVerified' as never);
+        navigation.navigate('EmailVerified');
+        return;
+      }
+      
+      // Handle reset-password deep link
+      if (url.includes('reset-password')) {
+        const token = parsed?.queryParams?.token as string | undefined;
+        const expired = parsed?.queryParams?.expired === 'true';
+        
+        if (expired || !token) {
+          // Navigate to ResetPassword screen with error state
+          navigation.navigate('Auth', { 
+            screen: 'ResetPassword', 
+            params: { token: undefined } 
+          });
+        } else {
+          // Navigate to ResetPassword screen with token
+          navigation.navigate('Auth', { 
+            screen: 'ResetPassword', 
+            params: { token } 
+          });
+        }
         return;
       }
       
       // Handle old token-based verification
-      if (parsed?.queryParams?.token) {
-        navigation.navigate('EmailVerify' as never, { token: parsed.queryParams.token as string } as never);
+      if (parsed?.queryParams?.token && !url.includes('reset-password')) {
+        navigation.navigate('EmailVerify', { token: parsed.queryParams.token as string });
       }
     });
 

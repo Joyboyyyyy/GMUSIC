@@ -9,22 +9,29 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { CommonActions } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList, RootStackParamList } from '../../navigation/types';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../store/authStore';
+import api from '../../utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
+type LoginNav = NativeStackNavigationProp<AuthStackParamList, "Login">;
+
 const LoginScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<LoginNav>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
   const { login, loginWithCredentials, loginWithGoogle, loginWithApple, redirectPath, clearRedirectPath, loading } = useAuthStore();
 
   // Google OAuth configuration
@@ -227,103 +234,118 @@ const LoginScreen = () => {
     <LinearGradient colors={['#5b21b6', '#7c3aed', '#a78bfa']} style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
+        style={{ flex: 1 }}
       >
-        <View style={styles.header}>
-          <Text style={styles.logo}>🎵</Text>
-          <Text style={styles.title}>Gretex Music Room</Text>
-          <Text style={styles.subtitle}>Learn music from the best</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#9ca3af"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.logo}>🎵</Text>
+            <Text style={styles.title}>Gretex Music Room</Text>
+            <Text style={styles.subtitle}>Learn music from the best</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#9ca3af"
-              secureTextEntry={true}
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#9ca3af"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
 
-          <TouchableOpacity
-            style={[
-              styles.button,
-              (!email.trim() || !password.trim()) && { opacity: 0.5 },
-            ]}
-            disabled={!email.trim() || !password.trim() || loading}
-            onPress={() => {
-              if (!email.trim() || !password.trim()) {
-                return Alert.alert('Login Error', 'Please enter email and password.');
-              }
-              handleLogin();
-            }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Login</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={true}
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Social Login Buttons */}
-          <View style={styles.socialButtons}>
             <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleSignIn}
-              disabled={!request || loading}
+              style={[
+                styles.button,
+                (!email.trim() || !password.trim()) && { opacity: 0.5 },
+              ]}
+              disabled={!email.trim() || !password.trim() || loading}
+              onPress={() => {
+                if (!email.trim() || !password.trim()) {
+                  return Alert.alert('Login Error', 'Please enter email and password.');
+                }
+                handleLogin();
+              }}
             >
-              <Ionicons name="logo-google" size={20} color="#DB4437" />
-              <Text style={styles.socialButtonText}>Google</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Login</Text>
+              )}
             </TouchableOpacity>
 
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                style={styles.appleButton}
-                onPress={handleAppleLogin}
-                disabled={loading}
-              >
-                <Ionicons name="logo-apple" size={20} color="#000" />
-                <Text style={[styles.socialButtonText, { color: '#000' }]}>
-                  Apple
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-          {/* Sign Up Link */}
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Signup' as never)}
-          >
-            <Text style={styles.linkText}>
-              Don't have an account?{' '}
-              <Text style={styles.linkTextBold}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {/* Social Login Buttons */}
+            <View style={styles.socialButtons}>
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                disabled={!request || loading}
+              >
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
+                <Text style={styles.socialButtonText}>Google</Text>
+              </TouchableOpacity>
+
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={styles.appleButton}
+                  onPress={handleAppleLogin}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-apple" size={20} color="#000" />
+                  <Text style={[styles.socialButtonText, { color: '#000' }]}>
+                    Apple
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Sign Up Link */}
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate('Signup' as never)}
+            >
+              <Text style={styles.linkText}>
+                Don't have an account?{' '}
+                <Text style={styles.linkTextBold}>Sign Up</Text>
+              </Text>
+            </TouchableOpacity>
+
+            {/* Forgot Password - Moved below Sign Up */}
+            <TouchableOpacity
+              style={{ marginTop: 16, alignItems: "center" }}
+              onPress={() => navigation.navigate("ForgotPassword")}
+            >
+              <Text style={{ color: "#d8b4fe", fontSize: 15, fontWeight: "600" }}>
+                Forgot Password?
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -361,6 +383,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
+    // Removed paddingBottom so Forgot Password is not cramped under input
   },
   label: {
     fontSize: 14,

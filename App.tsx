@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import * as Linking from 'expo-linking';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/authStore';
+import { RootStackParamList } from './src/navigation/types';
+import { navigationRef } from './src/navigation/navigationRef';
 
 export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -30,18 +32,28 @@ export default function App() {
     );
   }
 
-  const linking = {
+  const linking: LinkingOptions<RootStackParamList> = {
     prefixes: ['gretexmusicroom://'],
     config: {
       screens: {
         EmailVerified: 'email-verified',
+        Auth: {
+          screens: {
+            ResetPassword: {
+              path: 'reset-password',
+              parse: {
+                token: (token: string) => token,
+              },
+            },
+          },
+        },
       },
     },
   };
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer linking={linking}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <StatusBar style="light" />
         <RootNavigator />
       </NavigationContainer>
