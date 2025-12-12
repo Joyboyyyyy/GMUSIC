@@ -25,8 +25,9 @@ export default {
       },
   
       extra: {
-        BACKEND_BASE_URL: "http://192.168.100.40:3000",
-  
+        apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://192.168.100.40:3000",
+        BACKEND_BASE_URL: process.env.EXPO_PUBLIC_API_URL || "http://192.168.100.40:3000",
+
         eas: {
           projectId: "1fbc2dfb-9dbd-4f70-9059-0115a156ff04"
         }

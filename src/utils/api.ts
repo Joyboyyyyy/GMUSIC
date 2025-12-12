@@ -1,6 +1,11 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 
-const BASE_URL = 'http://192.168.100.40:3000';
+// Get API URL from environment variable or use fallback for local development
+const BASE_URL = 
+  Constants.expoConfig?.extra?.apiUrl || 
+  process.env.EXPO_PUBLIC_API_URL || 
+  'http://192.168.100.40:3000'; // fallback during local dev
 
 // Create axios instance
 const api = axios.create({
