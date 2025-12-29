@@ -1,121 +1,118 @@
 import crypto from "crypto";
-import prisma from "../config/prismaClient.js";
-import { razorpay } from "../config/razorpay.js";
+import db from "../lib/db.js";
+import { getRazorpay } from "../config/razorpay.js";
 
 export const createRazorpayOrder = async ({ userId, courseId }) => {
-  console.log(`[Razorpay Service] Starting order creation for userId: ${userId}, courseId: ${courseId}`);
+  console.log(`[Razorpay Service] Creating order for userId: ${userId}, courseId: ${courseId}`);
   
-  // Check if Razorpay is configured
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  // ===== INPUT VALIDATION =====
+  // Validate courseId - must be a non-empty string (UUID format)
+  if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
+    console.error(`[Razorpay Service] Invalid courseId: ${courseId} (type: ${typeof courseId})`);
+    throw new Error(`Invalid courseId. Received: ${courseId}. Expected a valid UUID string.`);
+  }
+  
+  // Validate userId - must be a non-empty string (UUID format)
+  if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+    console.error(`[Razorpay Service] Invalid userId: ${userId} (type: ${typeof userId})`);
+    throw new Error(`Invalid userId. Received: ${userId}. Expected a valid UUID string.`);
+  }
+  
+  // Check for obviously invalid IDs (numeric strings like "1", "2", etc.)
+  if (/^\d+$/.test(courseId)) {
+    console.error(`[Razorpay Service] Numeric courseId rejected: ${courseId}`);
+    throw new Error(`Invalid courseId format. Received numeric ID: ${courseId}. Expected UUID format.`);
+  }
+  
+  const razorpay = getRazorpay();
+  if (!razorpay) {
     throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env");
   }
 
+  // ===== DATABASE LOOKUP - SINGLE SOURCE OF TRUTH =====
   console.log(`[Razorpay Service] Fetching user and course from database...`);
-  let user = await prisma.user.findUnique({ where: { id: userId } });
-  let course = await prisma.course.findUnique({ where: { id: courseId } });
-
-  // Test mode fallback - create test user if not found (for testing only)
-  if (!user) {
-    console.warn(`[Razorpay Service] User not found: ${userId}. Using test fallback.`);
-    
-    // Check if we're in development/test mode
-    if (process.env.NODE_ENV !== 'production') {
-      // Try to create or find a test user
-      const testEmail = `test_${Date.now()}@example.com`;
-      try {
-        user = await prisma.user.upsert({
-          where: { email: testEmail },
-          update: {},
-          create: {
-            id: userId || `test-user-${Date.now()}`,
-            name: 'Test User',
-            email: testEmail,
-            password: 'test_password_hash',
-            role: 'student',
-          },
-        });
-        console.log(`[Razorpay Service] Created test user: ${user.id}`);
-      } catch (error) {
-        console.error(`[Razorpay Service] Failed to create test user:`, error);
-        return {
-          error: `User not found: ${userId}. Please ensure the user exists in the database.`,
-          suggestion: "Create a user first or use a valid userId (UUID format)."
-        };
-      }
-    } else {
-      return {
-        error: `User not found: ${userId}`,
-        suggestion: "Please provide a valid userId (UUID format)."
-      };
-    }
-  }
   
-  // Test mode fallback - create test course if not found (for testing only)
+  // Fetch user from database
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    console.error(`[Razorpay Service] User not found in database: ${userId}`);
+    throw new Error(`User not found. userId: ${userId}`);
+  }
+  console.log(`[Razorpay Service] User found: ${user.id}, email: ${user.email}`);
+  
+  // Fetch course from database - THIS IS THE SINGLE SOURCE OF TRUTH FOR PRICE
+  const course = await db.course.findUnique({ where: { id: courseId } });
   if (!course) {
-    console.warn(`[Razorpay Service] Course not found: ${courseId}. Using test fallback.`);
-    
-    // Check if we're in development/test mode
-    if (process.env.NODE_ENV !== 'production') {
-      // Create a test course
-      try {
-        course = await prisma.course.create({
-          data: {
-            id: courseId || `test-course-${Date.now()}`,
-            title: 'Test Course',
-            description: 'Test course for Razorpay payment',
-            price: 500.00, // ₹500 in rupees
-            duration: 60, // 60 minutes
-          },
-        });
-        console.log(`[Razorpay Service] Created test course: ${course.id} with price: ${course.price}`);
-      } catch (error) {
-        console.error(`[Razorpay Service] Failed to create test course:`, error);
-        return {
-          error: `Course not found: ${courseId}. Please ensure the course exists in the database.`,
-          suggestion: "Create a course first or use a valid courseId (UUID format)."
-        };
-      }
-    } else {
-      return {
-        error: `Course not found: ${courseId}`,
-        suggestion: "Please provide a valid courseId (UUID format)."
-      };
-    }
+    console.error(`[Razorpay Service] Course not found in database: ${courseId}`);
+    throw new Error(`Course not found. courseId: ${courseId}. Please ensure the course exists in the database.`);
+  }
+  console.log(`[Razorpay Service] Course found: ${course.id}, title: ${course.title}, price: ${course.price}`);
+  
+  // Validate course price from database (NEVER trust frontend price)
+  if (!course.price || typeof course.price !== 'number' || course.price <= 0) {
+    console.error(`[Razorpay Service] Invalid course price in database: ${course.price} for courseId: ${courseId}`);
+    throw new Error(`Invalid course price: ${course.price}. Price must be a positive number.`);
   }
 
-  console.log(`[Razorpay Service] User and course found. Creating Razorpay order...`);
+  // ===== COMPUTE AMOUNT FROM DATABASE ONLY =====
+  // Amount in paise (1 INR = 100 paise)
   const amount = Math.round(course.price * 100);
+  console.log(`[Razorpay Service] Computed amount: ${amount} paise (₹${course.price})`);
 
-  if (!amount || amount <= 0) {
-    throw new Error(`Invalid course price: ${course.price}`);
+  if (amount < 100) {
+    throw new Error(`Amount too small: ₹${course.price}. Minimum is ₹1.`);
   }
 
-  // FIXED RECEIPT (ALWAYS < 40 characters)
-  const receiptId = `order_${Date.now()}`;  
+  // ===== CREATE RAZORPAY ORDER =====
+  const receiptId = `rcpt_${Date.now()}`;
+  console.log(`[Razorpay Service] Creating Razorpay order - amount: ${amount}, currency: INR, receipt: ${receiptId}`);
+  
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount,
+      currency: "INR",
+      receipt: receiptId,
+      notes: { 
+        userId: user.id, 
+        courseId: course.id,
+        courseTitle: course.title,
+        userEmail: user.email
+      },
+    });
+    console.log(`[Razorpay Service] Razorpay order created: ${order.id}`);
+  } catch (razorpayError) {
+    console.error(`[Razorpay Service] Razorpay API error:`, razorpayError);
+    if (razorpayError.error) {
+      console.error(`[Razorpay Service] Razorpay error details:`, JSON.stringify(razorpayError.error, null, 2));
+    }
+    throw new Error(razorpayError.error?.description || razorpayError.message || "Failed to create Razorpay order");
+  }
 
-  const order = await razorpay.orders.create({
-    amount,
-    currency: "INR",
-    receipt: receiptId,  // <-- FIXED
-    notes: { userId: user.id, courseId: course.id },
+  // ===== CREATE ENROLLMENT RECORD =====
+  console.log(`[Razorpay Service] Creating enrollment record...`);
+  const enrollment = await db.enrollment.create({
+    data: { 
+      userId: user.id, 
+      courseId: course.id, 
+      status: "pending" 
+    },
   });
-
-  console.log(`[Razorpay Service] Razorpay order created: ${order.id}. Creating enrollment...`);
-
-  const enrollment = await prisma.enrollment.create({
-    data: { userId: user.id, courseId: course.id, status: "pending" },
-  });
-
   console.log(`[Razorpay Service] Enrollment created: ${enrollment.id}`);
 
-  // Ensure response format matches frontend expectations
+  // ===== RETURN RESPONSE =====
   const response = {
     key: process.env.RAZORPAY_KEY_ID,
     order,
     enrollmentId: enrollment.id,
+    course: {
+      id: course.id,
+      title: course.title,
+      price: course.price,
+    }
   };
 
-  console.log(`[Razorpay Service] Returning response with key, order.id: ${order.id}, enrollmentId: ${enrollment.id}`);
+  console.log(`[Razorpay Service] Order creation successful - orderId: ${order.id}, enrollmentId: ${enrollment.id}`);
   return response;
 };
 
@@ -126,6 +123,11 @@ export const verifyRazorpayPayment = async ({
   enrollmentId,
 }) => {
   console.log(`[Razorpay Service] Verifying payment - Order ID: ${razorpay_order_id}, Payment ID: ${razorpay_payment_id}`);
+
+  const razorpay = getRazorpay();
+  if (!razorpay || !process.env.RAZORPAY_KEY_SECRET) {
+    throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env");
+  }
 
   // Verify signature using HMAC SHA256
   const generatedSignature = crypto
@@ -145,7 +147,7 @@ export const verifyRazorpayPayment = async ({
   
   if (enrollmentId) {
     // Update enrollment directly if enrollmentId is provided
-    enrollment = await prisma.enrollment.update({
+    enrollment = await db.enrollment.update({
       where: { id: enrollmentId },
       data: { status: "paid", paymentId: razorpay_payment_id },
     });
@@ -161,6 +163,11 @@ export const verifyRazorpayPayment = async ({
 };
 
 export const handleRazorpayWebhook = async (req) => {
+  const razorpay = getRazorpay();
+  if (!razorpay || !process.env.RAZORPAY_WEBHOOK_SECRET) {
+    throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_WEBHOOK_SECRET in .env");
+  }
+
   const expected = crypto
     .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
     .update(req.rawBody)
@@ -173,7 +180,7 @@ export const handleRazorpayWebhook = async (req) => {
 
   if (event.event === "payment.captured") {
     const payment = event.payload.payment.entity;
-    await prisma.enrollment.updateMany({
+    await db.enrollment.updateMany({
       where: { paymentId: null, status: "pending" },
       data: { status: "paid", paymentId: payment.id },
     });

@@ -4,20 +4,20 @@ import { useAuthStore, RedirectPath } from '../store/authStore';
 
 /**
  * Helper function to require authentication before performing an action
- * @param isAuthenticated - Whether the user is authenticated
+ * @param status - Auth status ('unauthenticated' | 'pending_verification' | 'authenticated')
  * @param navigation - Navigation object
  * @param onAuthenticated - Callback to execute if user is authenticated
  * @param message - Optional custom message for login prompt
  * @param redirectPath - Optional route name (string) or redirect object ({ name, params }) to redirect to after login
  */
 export function requireAuth(
-  isAuthenticated: boolean,
+  status: 'unauthenticated' | 'pending_verification' | 'authenticated',
   navigation: NavigationProp<any>,
   onAuthenticated: () => void,
   message: string = 'Please login to continue',
   redirectPath?: string | RedirectPath
 ): void {
-  if (!isAuthenticated) {
+  if (status !== 'authenticated') {
     const { setRedirectPath } = useAuthStore.getState();
     
     // Store redirect path if provided

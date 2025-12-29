@@ -11,7 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import RazorpayCheckout from 'react-native-razorpay';
+import { 
+  openRazorpayCheckout, 
+  isRazorpayAvailable, 
+  showRazorpayUnavailableAlert,
+  RazorpayOptions,
+  RazorpayResponse
+} from '../utils/razorpay';
 import { getApiUrl } from '../config/api';
 
 const PaymentTestScreen = () => {
@@ -53,14 +59,13 @@ const PaymentTestScreen = () => {
       const { key, order, enrollmentId } = data;
 
       // Step 3: Prepare options object (using exact structure as requested)
-      const options = {
+      const options: RazorpayOptions = {
         key: data.key,
         amount: data.order.amount,
         currency: data.order.currency,
         name: 'Test Payment',
         description: 'React Native Razorpay Test Transaction',
         order_id: data.order.id,
-        notes: data.order.notes,
         prefill: {
           name: 'Test User',
           email: 'test@example.com',
@@ -71,8 +76,15 @@ const PaymentTestScreen = () => {
 
       console.log('Opening Razorpay checkout with options:', JSON.stringify(options, null, 2));
 
+      // Check if Razorpay is available
+      if (!isRazorpayAvailable()) {
+        showRazorpayUnavailableAlert();
+        setLoading(false);
+        return;
+      }
+
       // Step 4: Open Razorpay Checkout
-      const razorpayResponse = await RazorpayCheckout.open(options);
+      const razorpayResponse = await openRazorpayCheckout(options);
 
       // Step 5: Extract payment details
       const razorpay_payment_id = razorpayResponse.razorpay_payment_id;

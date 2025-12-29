@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import BrowseScreen from '../screens/BrowseScreen';
-import LibraryScreen from '../screens/LibraryScreen';
+import BookRoomScreen from '../screens/booking/BookRoomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CartIcon from '../components/CartIcon';
 import { MainTabParamList } from './types';
@@ -69,11 +69,12 @@ const MainNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Library"
-        component={LibraryScreen}
+        name="BookRoom"
+        component={BookRoomScreen}
         options={{
+          title: 'Book a Room',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="library" size={size} color={color} />
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />

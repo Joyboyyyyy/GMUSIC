@@ -1,10 +1,18 @@
 import * as Haptics from 'expo-haptics';
 
-export const hapticTap = () => Haptics.selectionAsync();
-export const hapticSuccess = () =>
+export const hapticTap = () => {
+  Haptics.selectionAsync();
+};
+
+export const hapticSuccess = () => {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-export const hapticError = () =>
+};
+
+export const hapticError = () => {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-export const hapticWarning = () =>
+};
+
+export const hapticWarning = () => {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+};
 

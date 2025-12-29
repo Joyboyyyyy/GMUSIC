@@ -11,35 +11,61 @@ export default function EmailVerifyScreen() {
   const route = useRoute<EmailVerifyScreenRouteProp>();
   const token = route?.params?.token;
 
-  async function handleVerify(t: string) {
+  // REMOVED: Automatic API verification call
+  // Email verification happens in backend GET /api/auth/verify-email
+  // This screen is now ONLY for manual retry/resend flows
+  // If user reaches here with a token, they can manually trigger verification
+  
+  async function handleManualVerify(t: string) {
     try {
-      await api.get(`/api/auth/verify-email/${t}`);
-      Alert.alert('Success', 'Email verified successfully', [
-        { text: 'OK', onPress: () => navigation.navigate('Auth' as never, { screen: 'Login' } as never) },
-      ]);
+      console.log('[EmailVerifyScreen] Manual verification triggered');
+      // POST to verify-email endpoint with token in body (for manual retry only)
+      const response = await api.post('/api/auth/verify-email', { token: t });
+      
+      console.log('[EmailVerifyScreen] Manual verification successful:', response.data);
+      
+      // On success, redirect to EmailVerified screen (same as email link flow)
+      navigation.navigate('EmailVerified' as never);
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Verification failed');
+      console.error('[EmailVerifyScreen] Manual verification failed:', e);
+      const errorMessage = e?.response?.data?.message || e?.message || 'Verification failed. Please try again.';
+      Alert.alert(
+        'Verification Failed', 
+        errorMessage,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to Login screen so user can try again or resend email
+              navigation.navigate('Auth' as never, { screen: 'Login' } as never);
+            },
+          },
+        ]
+      );
     }
   }
 
+  // REMOVED: Automatic verification on mount
+  // This screen should NOT auto-verify tokens from deep links
+  // Backend GET endpoint already verified the email
+  // This screen is only for manual retry/resend flows
   useEffect(() => {
-    if (token) {
-      handleVerify(token);
-      return;
-    }
-
-    Linking.getInitialURL().then((url) => {
-      if (!url) return;
-      const parsed = Linking.parse(url);
-      const t = parsed?.queryParams?.token as string;
-      if (t) handleVerify(t);
-    });
+    // Do NOT auto-verify - backend already did it
+    // If user manually navigates here with a token, they can trigger verification manually
+    console.log('[EmailVerifyScreen] Screen loaded - no automatic verification (backend already verified)');
   }, [token]);
 
+  // This screen is for manual retry/resend flows only
+  // Email verification from email links goes directly to EmailVerifiedScreen
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" />
-      <Text style={styles.text}>Verifying...</Text>
+      <Text style={styles.text}>Email verification screen</Text>
+      <Text style={styles.subtext}>
+        This screen is for manual verification only.
+      </Text>
+      <Text style={styles.subtext}>
+        Email links automatically verify and redirect.
+      </Text>
     </View>
   );
 }
@@ -55,6 +81,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+    fontWeight: '500',
+  },
+  subtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
 

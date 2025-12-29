@@ -30,7 +30,16 @@ export const AuthNavigator = () => {
         }}
       />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+      <Stack.Screen 
+        name="ResetPassword" 
+        component={ResetPasswordScreen}
+        options={{
+          headerShown: true,
+          headerTitle: "Reset Password",
+          headerStyle: { backgroundColor: "#fff" },
+          headerTintColor: "#1f2937",
+        }}
+      />
     </Stack.Navigator>
   );
 };

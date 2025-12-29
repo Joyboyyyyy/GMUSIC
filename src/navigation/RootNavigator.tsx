@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
+import { Platform } from 'react-native';
+import { normalizeUrl, isDeepLink, isWebUrl } from '../utils/urls';
 import { AuthNavigator } from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import PackDetailScreen from '../screens/PackDetailScreen';
@@ -15,6 +17,10 @@ import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import CartScreen from '../screens/CartScreen';
 import EmailVerifyScreen from '../screens/EmailVerifyScreen';
 import EmailVerifiedScreen from '../screens/EmailVerifiedScreen';
+import SelectBuildingScreen from '../screens/booking/SelectBuildingScreen';
+import SelectSlotScreen from '../screens/booking/SelectSlotScreen';
+import BookingSuccessScreen from '../screens/booking/BookingSuccessScreen';
+import LibraryScreen from '../screens/LibraryScreen';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../store/authStore';
 
@@ -24,42 +30,60 @@ type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 const RootNavigator = () => {
   const navigation = useNavigation<RootNav>();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, status } = useAuthStore();
+
+  // Centralized deep link / web URL handler
+  // Supports both deep links (mobile) and web URLs (web platform)
+  const handleDeepLink = (url: string) => {
+    console.log('[Navigation] Handling URL:', url, `(platform: ${Platform.OS})`);
+    
+    // Normalize URL to extract path and params (works for both deep links and web URLs)
+    const { path, params } = normalizeUrl(url);
+    
+    // PRIMARY: Handle email-verified (from backend GET /api/auth/verify-email)
+    // This is the ONLY entry point for email verification flow
+    // Backend already verified the email, app will use authToken for auto-login
+    if (path.includes('email-verified')) {
+      const error = params?.error;
+      const authToken = params?.authToken;
+      console.log('[Navigation] Email verified URL received', error ? `(error: ${error})` : authToken ? '(with auth token)' : '(success)');
+      navigation.navigate('EmailVerified', { error, authToken });
+      return;
+    }
+    
+    // Handle reset-password - navigate to ResetPassword screen directly
+    if (path.includes('reset-password') && params?.token) {
+      const token = params.token;
+      console.log('[Navigation] Reset password URL received');
+      navigation.navigate('Auth', { 
+        screen: 'ResetPassword',
+        params: { token }
+      });
+      return;
+    }
+    
+    // Legacy: Handle verify-email (only for manual retry/resend flows)
+    // This should NOT be used for email link clicks (backend redirects to email-verified)
+    // Keeping for backward compatibility but should not be reached from email links
+    if (path.includes('verify-email') && params?.token) {
+      const token = params.token;
+      console.warn('[Navigation] Legacy verify-email URL received - this should not happen from email links');
+      // Still navigate to EmailVerify for manual retry flows, but log warning
+      navigation.navigate('EmailVerify', { token });
+      return;
+    }
+  };
 
   useEffect(() => {
+    // Handle URL changes (deep links on mobile, URL changes on web)
     const sub = Linking.addEventListener('url', ({ url }) => {
-      const parsed = Linking.parse(url);
-      
-      // Handle email-verified deep link
-      if (url.includes('email-verified')) {
-        navigation.navigate('EmailVerified');
-        return;
-      }
-      
-      // Handle reset-password deep link
-      if (url.includes('reset-password')) {
-        const token = parsed?.queryParams?.token as string | undefined;
-        const expired = parsed?.queryParams?.expired === 'true';
-        
-        if (expired || !token) {
-          // Navigate to ResetPassword screen with error state
-          navigation.navigate('Auth', { 
-            screen: 'ResetPassword', 
-            params: { token: undefined } 
-          });
-        } else {
-          // Navigate to ResetPassword screen with token
-          navigation.navigate('Auth', { 
-            screen: 'ResetPassword', 
-            params: { token } 
-          });
-        }
-        return;
-      }
-      
-      // Handle old token-based verification
-      if (parsed?.queryParams?.token && !url.includes('reset-password')) {
-        navigation.navigate('EmailVerify', { token: parsed.queryParams.token as string });
+      handleDeepLink(url);
+    });
+
+    // Handle initial URL (when app opens from deep link or web URL)
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
       }
     });
 
@@ -179,6 +203,40 @@ const RootNavigator = () => {
         component={EmailVerifiedScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="SelectBuilding" 
+        component={SelectBuildingScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="SelectSlot" 
+        component={SelectSlotScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="BookingSuccess" 
+        component={BookingSuccessScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: false, // Prevent going back from success screen
+        }}
+      />
+      <Stack.Screen 
+        name="Library" 
+        component={LibraryScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'My Library',
+          headerStyle: {
+            backgroundColor: '#fff',
+          },
+          headerTintColor: '#1f2937',
         }}
       />
     </Stack.Navigator>

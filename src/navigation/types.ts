@@ -14,7 +14,11 @@ export type RootStackParamList = {
   Chat: { mentorName: string; packTitle: string; packId: string };
   PaymentSuccess: { packId?: string; packIds?: string[] };
   EmailVerify: { token?: string };
-  EmailVerified: undefined;
+  EmailVerified: { error?: string; authToken?: string } | undefined;
+  SelectBuilding: undefined;
+  SelectSlot: { buildingId: string; date?: string };
+  BookingSuccess: { bookingId: string };
+  Library: undefined;
 };
 
 export type AuthStackParamList = {
@@ -22,13 +26,15 @@ export type AuthStackParamList = {
   Signup: undefined;
   EmailVerify: { token?: string };
   VerifyEmail: { email: string };
+  ForgotPassword: undefined;
+  ResetPassword: { token: string };
 };
 
 export type MainTabParamList = {
   Home: undefined;
   Dashboard: undefined;
   Browse: undefined;
-  Library: undefined;
+  BookRoom: undefined;
   Profile: undefined;
 };
 

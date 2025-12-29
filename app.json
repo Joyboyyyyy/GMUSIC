@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Gretex Music Room",
@@ -7,6 +8,7 @@
     "scheme": "gretexmusicroom",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -16,29 +18,61 @@
       "**/*"
     ],
     "plugins": [
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-secure-store",
+      "expo-apple-authentication"
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gretexmusicroom.app",
+      "buildNumber": "1",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "razorpay",
           "tez",
           "phonepe",
-          "paytmmp"
-        ]
-      }
+          "paytmmp",
+          "gpay",
+          "upi"
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["gretexmusicroom"]
+          }
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "UIBackgroundModes": ["audio"]
+      },
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:gretexmusicroom.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#5b21b6"
       },
-      "package": "com.gretexmusicroom.app"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      "package": "com.gretexmusicroom.app",
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "gretexmusicroom"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "extra": {
       "eas": {

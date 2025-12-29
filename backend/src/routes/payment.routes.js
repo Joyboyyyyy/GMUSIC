@@ -18,4 +18,3 @@ router.get('/my-purchases', authenticate, getUserPurchases);
 router.post('/:purchaseId/refund', authenticate, requireRole('ADMIN'), refundPurchase);
 
 export default router;
-

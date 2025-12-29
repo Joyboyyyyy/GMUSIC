@@ -3,15 +3,21 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                  String       @id @default(uuid())
+  id               String   @id @default(uuid())
+  email            String   @unique
+  password         String
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  // existing fields stay as-is
   name                String
-  email               String       @unique
-  password            String
   role                String       @default("user")
   createdAt           DateTime     @default(now())
   avatar              String?
@@ -22,6 +28,11 @@ model User {
   verificationExpires DateTime?
   verificationToken   String?
   isActive            Boolean      @default(true)
+  
+  // Profile fields
+  dateOfBirth         DateTime?
+  address             String?
+  
   enrollments         Enrollment[]
 }
 

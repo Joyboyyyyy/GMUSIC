@@ -3,8 +3,19 @@ import {
   verifyRazorpayPayment,
   handleRazorpayWebhook,
 } from "../services/razorpay.service.js";
+import { getRazorpay } from "../config/razorpay.js";
 
 export const createOrder = async (req, res) => {
+  console.log("➡️ Razorpay create-order route hit");
+  
+  const razorpay = getRazorpay();
+  if (!razorpay) {
+    return res.status(503).json({
+      success: false,
+      message: "Payments are temporarily unavailable",
+    });
+  }
+
   try {
     const { userId, courseId } = req.body;
     
@@ -45,6 +56,14 @@ export const createOrder = async (req, res) => {
 };
 
 export const verifyPayment = async (req, res) => {
+  const razorpay = getRazorpay();
+  if (!razorpay) {
+    return res.status(503).json({
+      success: false,
+      message: "Payments are temporarily unavailable",
+    });
+  }
+
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, enrollmentId } = req.body;
 
@@ -80,6 +99,14 @@ export const verifyPayment = async (req, res) => {
 };
 
 export const razorpayWebhook = async (req, res) => {
+  const razorpay = getRazorpay();
+  if (!razorpay) {
+    return res.status(503).json({
+      success: false,
+      message: "Payments are temporarily unavailable",
+    });
+  }
+
   try {
     await handleRazorpayWebhook(req);
     res.status(200).send("OK");

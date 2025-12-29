@@ -7,8 +7,16 @@ PORT=3000
 NODE_ENV=development
 
 # Database Configuration
-# Replace with your PostgreSQL connection string
-DATABASE_URL="postgresql://user:password@localhost:5432/gretex_music_room"
+# For Supabase: Use pooler connection (with pgbouncer=true)
+# Format: postgresql://user:password@pooler.supabase.com:6543/dbname?pgbouncer=true&sslmode=require
+# For local PostgreSQL: postgresql://user:password@localhost:5432/gretex_music_room
+DATABASE_URL="postgresql://user:password@pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
+
+# Direct Database URL (Required for Supabase with Prisma)
+# For Supabase: Use direct connection (db.supabase.com, port 5432)
+# Format: postgresql://user:password@db.supabase.com:5432/postgres?sslmode=require
+# For local PostgreSQL: Same as DATABASE_URL or omit this variable
+DIRECT_URL="postgresql://user:password@db.supabase.com:5432/postgres?sslmode=require"
 
 # JWT Configuration
 # Generate a strong secret: openssl rand -base64 32
@@ -50,7 +58,14 @@ SMTP_SECURE=true
 SMTP_USER=info@gretexindustries.com
 SMTP_PASS=YOUR_SMTP_PASSWORD
 EMAIL_FROM=info@gretexindustries.com
-BACKEND_URL=http://192.168.100.40:3000
+
+# Backend URL (for email verification links)
+# IMPORTANT: Set this to your computer's LAN IP address
+# Find your IP: Windows (ipconfig) or Mac/Linux (ifconfig)
+# The server will auto-detect if not set, but setting it explicitly is recommended
+# Example: BACKEND_URL=http://192.168.1.100:3000
+# Leave empty to auto-detect (server will use detected IP)
+BACKEND_URL=
 APP_SCHEME=gretexmusicroom://
 
 # ========================================

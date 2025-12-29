@@ -1,10 +1,10 @@
 import zohoClient from '../config/zoho.js';
-import prisma from '../config/prismaClient.js';
+import db from '../lib/db.js';
 
 class ZohoService {
   async createLeadFromUser(user, courseId) {
     try {
-      const course = await prisma.course.findUnique({
+      const course = await db.course.findUnique({
         where: { id: courseId },
       });
 
@@ -55,7 +55,7 @@ class ZohoService {
 
   async syncEnrollmentData(userId) {
     try {
-      const user = await prisma.user.findUnique({
+      const user = await db.user.findUnique({
         where: { id: userId },
         include: {
           enrollments: {

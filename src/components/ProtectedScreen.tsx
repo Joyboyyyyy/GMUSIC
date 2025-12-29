@@ -6,18 +6,19 @@ import LoginRequired from './LoginRequired';
 interface ProtectedScreenProps {
   children: React.ReactNode;
   routeName?: string; // Optional route name, will try to detect if not provided
+  requireAuth?: boolean; // If false, allow unauthenticated access (default: true)
 }
 
-const ProtectedScreen: React.FC<ProtectedScreenProps> = ({ children, routeName }) => {
+const ProtectedScreen: React.FC<ProtectedScreenProps> = ({ children, routeName, requireAuth = true }) => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user, isLoggingOut, setRedirectPath } = useAuthStore();
+  const { user, status, isLoggingOut, setRedirectPath } = useAuthStore();
   const hasNavigated = useRef(false);
   const hasSetRedirect = useRef(false);
 
   useEffect(() => {
-    // Set redirect path when user is not authenticated and tries to access protected screen
-    if (user == null && !hasSetRedirect.current) {
+    // Only set redirect path if auth is required
+    if (requireAuth && status !== 'authenticated' && !hasSetRedirect.current) {
       hasSetRedirect.current = true;
       const screenName = routeName || route.name;
       const routeParams = (route.params as any) || {};
@@ -31,7 +32,7 @@ const ProtectedScreen: React.FC<ProtectedScreenProps> = ({ children, routeName }
 
     // Only handle logout scenario - navigate to Home
     // Do NOT auto-redirect for initial access (let user see LoginRequired screen)
-    if (user == null && isLoggingOut && !hasNavigated.current) {
+    if (status !== 'authenticated' && isLoggingOut && !hasNavigated.current) {
       hasNavigated.current = true;
       
       // If logging out, navigate to Home tab (public screen)
@@ -49,16 +50,16 @@ const ProtectedScreen: React.FC<ProtectedScreenProps> = ({ children, routeName }
       setTimeout(() => {
         hasNavigated.current = false;
       }, 100);
-    } else if (user != null) {
+    } else if (status === 'authenticated') {
       // Reset navigation flag when user becomes authenticated
       hasNavigated.current = false;
       hasSetRedirect.current = false;
     }
-  }, [user, isLoggingOut, navigation, route, routeName, setRedirectPath]);
+  }, [status, isLoggingOut, navigation, route, routeName, setRedirectPath, requireAuth]);
 
-  // If user is not authenticated, show LoginRequired component
-  // This allows users to see the screen but prompts them to login
-  if (user == null) {
+  // If auth is required and user is not authenticated, show LoginRequired component
+  // If requireAuth is false, allow access regardless of auth status
+  if (requireAuth && status !== 'authenticated') {
     return <LoginRequired />;
   }
 

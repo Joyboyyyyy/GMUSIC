@@ -22,7 +22,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const CartScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { items, removeFromCart, getTotalPrice } = useCartStore();
-  const { isAuthenticated, setRedirectPath } = useAuthStore();
+  const { status, setRedirectPath } = useAuthStore();
   const totalPrice = getTotalPrice();
 
   const handleCheckout = () => {
@@ -32,7 +32,7 @@ const CartScreen = () => {
     }
 
     requireAuth(
-      isAuthenticated,
+      status,
       navigation,
       () => {
         navigation.navigate('Checkout', { items });

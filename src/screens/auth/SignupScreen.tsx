@@ -13,24 +13,26 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../store/authStore';
+import { useNavigation } from '@react-navigation/native';
+import { CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList, RootStackParamList } from '../../navigation/types';
+import { useAuthStore } from '../../store/authStore';
+import { AuthStackParamList } from '../../navigation/types';
+import { setItem } from '../../utils/storage';
 
-type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
+type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, "Signup">;
 
-interface Props {
-  navigation: SignupScreenNavigationProp;
-}
-
-const SignupScreen: React.FC<Props> = ({ navigation }) => {
+const SignupScreen = () => {
+  const navigation = useNavigation<SignupScreenNavigationProp>();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [address, setAddress] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { signup, loading } = useAuthStore();
+  const { signup, loading, fetchMe } = useAuthStore();
 
   const passwordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{6,}$/;
@@ -50,20 +52,78 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
     rules.hasSpecial &&
     rules.hasLength;
 
+  // Validate DOB format (DD/MM/YYYY)
+  const isValidDOB = (dob: string) => {
+    if (!dob) return true; // Optional field
+    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    const match = dob.match(regex);
+    if (!match) return false;
+    
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+    
+    if (month < 1 || month > 12) return false;
+    if (day < 1 || day > 31) return false;
+    if (year < 1900 || year > new Date().getFullYear()) return false;
+    
+    return true;
+  };
+
+  // Convert DD/MM/YYYY to ISO date string
+  const formatDOBForAPI = (dob: string): string | null => {
+    if (!dob) return null;
+    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    const match = dob.match(regex);
+    if (!match) return null;
+    
+    const day = match[1];
+    const month = match[2];
+    const year = match[3];
+    
+    return `${year}-${month}-${day}`;
+  };
+
   const handleSignup = async () => {
     try {
-      const result = await signup(name, email, password);
+      console.log('[SignupScreen] Starting signup process');
       
-      if (!result.emailVerified) {
-        // Navigate to VerifyEmail screen if email is not verified
-        (navigation as any).navigate('VerifyEmail', { email: result.email });
-        return;
-      }
+      // Store intended destination before signup (user wants to go to Main/Home after verification)
+      // This ensures we can restore their navigation after email verification
+      // Use storage abstraction for cross-platform compatibility
+      await setItem(
+        'postAuthRedirect',
+        JSON.stringify({
+          route: 'Main',
+          screen: 'Home', // Default to Home screen after verification
+        })
+      );
+      console.log('[SignupScreen] Stored intended destination: Main/Home');
       
-      // Email is verified, navigate to Main
-      (navigation as any).navigate('Main');
+      // Prepare signup data with optional fields
+      const signupData = {
+        name,
+        email,
+        password,
+        dateOfBirth: formatDOBForAPI(dateOfBirth),
+        address: address.trim() || null,
+      };
+      
+      const result = await signup(signupData.name, signupData.email, signupData.password, signupData.dateOfBirth, signupData.address);
+      
+      console.log('[SignupScreen] Signup result:', { 
+        email: result.email
+      });
+      
+      // After signup, always navigate to VerifyEmail screen
+      // NO token is stored, status is 'pending_verification'
+      console.log('[SignupScreen] Navigating to VerifyEmail');
+      navigation.navigate('VerifyEmail', { email: result.email });
     } catch (e: any) {
-      Alert.alert('Signup Failed', e.message);
+      // Show clear error message
+      const errorMessage = e.message || 'Signup failed. Please try again.';
+      console.error('[SignupScreen] Signup error:', errorMessage, e);
+      Alert.alert('Signup Failed', errorMessage);
     }
   };
 
@@ -105,6 +165,49 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Date of Birth</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="DD/MM/YYYY"
+                placeholderTextColor="#9ca3af"
+                value={dateOfBirth}
+                onChangeText={(text) => {
+                  // Auto-format as user types
+                  let formatted = text.replace(/[^\d]/g, '');
+                  if (formatted.length > 2) {
+                    formatted = formatted.slice(0, 2) + '/' + formatted.slice(2);
+                  }
+                  if (formatted.length > 5) {
+                    formatted = formatted.slice(0, 5) + '/' + formatted.slice(5);
+                  }
+                  if (formatted.length > 10) {
+                    formatted = formatted.slice(0, 10);
+                  }
+                  setDateOfBirth(formatted);
+                }}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+              {dateOfBirth && !isValidDOB(dateOfBirth) && (
+                <Text style={styles.errorText}>Please enter a valid date (DD/MM/YYYY)</Text>
+              )}
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Address</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Enter your address"
+                placeholderTextColor="#9ca3af"
+                value={address}
+                onChangeText={setAddress}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
               />
             </View>
 
@@ -179,18 +282,24 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 (!name.trim() ||
                   !email.trim() ||
                   !passwordValid ||
-                  confirmPassword !== password) && { opacity: 0.5 },
+                  confirmPassword !== password ||
+                  (dateOfBirth && !isValidDOB(dateOfBirth))) && { opacity: 0.5 },
               ]}
               disabled={
                 !name.trim() ||
                 !email.trim() ||
                 !passwordValid ||
                 confirmPassword !== password ||
+                (dateOfBirth !== '' && !isValidDOB(dateOfBirth)) ||
                 loading
               }
               onPress={() => {
                 if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-                  return Alert.alert('Signup Error', 'All fields are required.');
+                  return Alert.alert('Signup Error', 'Name, email, and password are required.');
+                }
+
+                if (dateOfBirth && !isValidDOB(dateOfBirth)) {
+                  return Alert.alert('Invalid Date', 'Please enter a valid date of birth (DD/MM/YYYY).');
                 }
 
                 if (!passwordRegex.test(password)) {
@@ -216,11 +325,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.linkButton}
-              onPress={() =>
-                (navigation as any).navigate("Auth", {
-                  screen: "Login",
-                } as never)
-              }
+              onPress={() => navigation.navigate("Login")}
             >
               <Text style={styles.linkText}>
                 Already have an account? <Text style={styles.linkTextBold}>Login</Text>
@@ -282,6 +387,15 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: '#1f2937',
+  },
+  textArea: {
+    minHeight: 80,
+    paddingTop: 16,
+  },
+  errorText: {
+    color: '#fca5a5',
+    fontSize: 12,
+    marginTop: 4,
   },
   inputWrapper: {
     position: 'relative',

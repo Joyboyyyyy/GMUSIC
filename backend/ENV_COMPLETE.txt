@@ -1,0 +1,82 @@
+﻿# ========================================
+# GRETEX MUSIC ROOM - BACKEND CONFIG
+# Based on BACKEND_COMPLETE.md documentation
+# ========================================
+
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Database Configuration
+# For Supabase: Use pooler connection (with pgbouncer=true)
+# Format: postgresql://user:password@pooler.supabase.com:6543/dbname?pgbouncer=true&sslmode=require
+DATABASE_URL="postgresql://user:password@pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
+
+# Direct Database URL (for Supabase migrations and certain operations)
+# For Supabase: Use direct connection (db.supabase.com, port 5432)
+# Format: postgresql://user:password@db.supabase.com:5432/postgres?sslmode=require
+DIRECT_URL="postgresql://user:password@db.supabase.com:5432/postgres?sslmode=require"
+
+# JWT Configuration
+# Generate a strong secret: openssl rand -base64 32
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRES_IN=7d
+
+# Password Security
+# Pepper for password hashing (add to password before hashing with Argon2id)
+PASSWORD_PEPPER=YourStrongSecretPepperKey123!!
+
+# Zoho CRM Configuration (Optional)
+# Get these from Zoho Developer Console
+ZOHO_CLIENT_ID=your_zoho_client_id
+ZOHO_CLIENT_SECRET=your_zoho_client_secret
+ZOHO_REFRESH_TOKEN=your_zoho_refresh_token
+ZOHO_ORG_ID=your_zoho_org_id
+
+# Payment Gateway Configuration
+# Stripe (for international payments - Optional)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+
+# Razorpay (for Indian payments - Optional)
+# Leave commented out if not using Razorpay (backend will work without them)
+# RAZORPAY_KEY_ID=your_razorpay_key_id
+# RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+# RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:8081
+
+# Email Configuration (Optional - for notifications)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_specific_password
+
+# Email Service (SMTP for email verification)
+SMTP_HOST=mail.gretexindustries.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=info@gretexindustries.com
+SMTP_PASS=YOUR_SMTP_PASSWORD
+EMAIL_FROM=info@gretexindustries.com
+
+# Backend URL (for email links and deep linking)
+# IMPORTANT: Set this to your computer's current LAN IP address
+# When backend server starts, it shows: "Your computer's IP: 192.168.x.x"
+# Use that IP here. If not set, server will auto-detect, but explicit is better
+# Example: BACKEND_URL=http://192.168.1.100:3000
+BACKEND_URL=http://192.168.100.40:3000
+APP_SCHEME=gretexmusicroom://
+
+# Resend API (Optional - alternative email service)
+# RESEND_API_KEY=your_resend_api_key
+
+# ========================================
+# IMPORTANT: Update the following with your actual values:
+# - DATABASE_URL: Your PostgreSQL connection string
+# - JWT_SECRET: Generate a strong secret key (openssl rand -base64 32)
+# - PASSWORD_PEPPER: Use a strong random string
+# - SMTP credentials: Your email service credentials
+# - Payment gateway keys: If using payments (Stripe/Razorpay)
+# - Zoho credentials: If using Zoho CRM integration
+# ========================================

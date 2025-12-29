@@ -1,47 +1,30 @@
-import prisma from '../config/prismaClient.js';
+import db from '../lib/db.js';
 
 class CourseService {
   async getAllCourses(filters = {}) {
     const { category, level, search } = filters;
 
-    const where = {
-      isActive: true,
-      ...(category && { category }),
-      ...(level && { level }),
-      ...(search && {
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ],
-      }),
-    };
+    // Build where clause based on available fields
+    const where = {};
+    
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-    const courses = await prisma.course.findMany({
+    const courses = await db.course.findMany({
       where,
-      include: {
-        tracks: {
-          select: {
-            id: true,
-            title: true,
-            duration: true,
-            isPreview: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { id: 'asc' },
     });
 
     return courses;
   }
 
   async getCourseById(courseId) {
-    const course = await prisma.course.findUnique({
-      where: { id: courseId, isActive: true },
-      include: {
-        tracks: {
-          orderBy: { order: 'asc' },
-        },
-      },
+    const course = await db.course.findUnique({
+      where: { id: courseId },
     });
 
     if (!course) {
@@ -52,27 +35,22 @@ class CourseService {
   }
 
   async getUserCourses(userId) {
-    const enrollments = await prisma.enrollment.findMany({
-      where: { userId },
+    const enrollments = await db.enrollment.findMany({
+      where: { userId, status: 'paid' },
       include: {
-        course: {
-          include: {
-            tracks: true,
-          },
-        },
+        course: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
     return enrollments.map((enrollment) => ({
       ...enrollment.course,
-      progress: enrollment.progress,
       enrolledAt: enrollment.createdAt,
     }));
   }
 
   async createCourse(courseData) {
-    const course = await prisma.course.create({
+    const course = await db.course.create({
       data: courseData,
     });
 
@@ -80,7 +58,7 @@ class CourseService {
   }
 
   async updateCourse(courseId, updates) {
-    const course = await prisma.course.update({
+    const course = await db.course.update({
       where: { id: courseId },
       data: updates,
     });
@@ -89,32 +67,17 @@ class CourseService {
   }
 
   async deleteCourse(courseId) {
-    await prisma.course.update({
+    await db.course.delete({
       where: { id: courseId },
-      data: { isActive: false },
     });
 
     return { message: 'Course deleted successfully' };
   }
 
   async addTrackToCourse(courseId, trackData) {
-    const track = await prisma.track.create({
-      data: {
-        ...trackData,
-        courseId,
-      },
-    });
-
-    // Update course tracks count
-    await prisma.course.update({
-      where: { id: courseId },
-      data: {
-        tracksCount: { increment: 1 },
-        duration: { increment: trackData.duration || 0 },
-      },
-    });
-
-    return track;
+    // Track model doesn't exist in current schema
+    // This is a placeholder for future implementation
+    throw new Error('Track functionality not yet implemented');
   }
 }
 

@@ -10,6 +10,12 @@ npm-debug.*
 *.orig.*
 web-build/
 
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+backend/.env
+
 # macOS
 .DS_Store
 

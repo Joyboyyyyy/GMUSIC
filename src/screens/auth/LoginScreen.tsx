@@ -17,9 +17,16 @@ import { useNavigation } from '@react-navigation/native';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList, RootStackParamList } from '../../navigation/types';
-import * as Google from 'expo-auth-session/providers/google';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+// Platform-safe Apple Authentication wrapper
+import { 
+  signInWithApple, 
+  isAppleAuthAvailable, 
+  showAppleAuthUnavailableAlert,
+  AppleAuthCredential,
+  AppleAuthenticationScope
+} from '../../utils/appleAuth';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../utils/api';
 
@@ -34,14 +41,32 @@ const LoginScreen = () => {
   
   const { login, loginWithCredentials, loginWithGoogle, loginWithApple, redirectPath, clearRedirectPath, loading } = useAuthStore();
 
-  // Google OAuth configuration
+  // Google OAuth configuration - uses Web Client ID only
+  // Backend verifies the ID token using google-auth-library
+  // useProxy: true REQUIRED for Web Client ID to avoid "Custom scheme URIs not allowed" error
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
-  });
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID, // WEB client ID only
+    scopes: ['openid', 'profile', 'email'],
+    responseType: 'id_token',
+    useProxy: true, // 🔥 REQUIRED - Use Expo Auth Proxy (https://auth.expo.io)
+    // Do NOT set redirectUri - Expo proxy handles this automatically
+    // Do NOT use makeRedirectUri({ scheme }) - Not needed with useProxy: true
+  } as any); // Type assertion needed for useProxy property
 
   useEffect(() => {
     if (response?.type === 'success') {
-      handleGoogleLogin(response.authentication?.accessToken);
+      // Extract idToken from response
+      const idToken = response.authentication?.idToken;
+      if (idToken) {
+        console.log('[Google Auth] ID token received, sending to backend for verification');
+        handleGoogleLogin(idToken);
+      } else {
+        console.error('[Google Auth] No idToken in response:', response);
+        Alert.alert('Error', 'Failed to get ID token from Google');
+      }
+    } else if (response?.type === 'error') {
+      console.error('[Google Auth] OAuth error:', response.error);
+      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
     }
   }, [response]);
 
@@ -97,22 +122,42 @@ const LoginScreen = () => {
         );
       }
     } catch (e: any) {
-      Alert.alert('Login Failed', e.message);
+      // Show clear error message
+      const errorMessage = e.message || 'Login failed. Please check your credentials.';
+      Alert.alert('Login Failed', errorMessage);
     }
   };
 
-  const handleGoogleLogin = async (accessToken?: string) => {
-    if (!accessToken) return;
+  const handleGoogleLogin = async (idToken: string) => {
+    if (!idToken) {
+      Alert.alert('Error', 'No ID token received from Google');
+      return;
+    }
 
     try {
-      const userInfoResponse = await fetch(
-        'https://www.googleapis.com/userinfo/v2/me',
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-      const googleUser = await userInfoResponse.json();
-      loginWithGoogle(googleUser);
+      console.log('[Google Auth] Sending ID token to backend for verification');
+      
+      // Send idToken to backend for verification
+      // Backend will verify using google-auth-library and return { user, token }
+      const response = await api.post('/api/auth/google', { idToken });
+      
+      const responseData = response.data;
+      const payload = responseData?.data || responseData;
+      const user = payload?.user || payload;
+      const token = payload?.token || responseData?.token;
+      
+      if (!token) {
+        throw new Error('No token received from server');
+      }
+      
+      if (!user) {
+        throw new Error('No user data received from server');
+      }
+      
+      console.log('[Google Auth] Backend verification successful, logging in user');
+      
+      // Persist token and update state
+      await login(user, token);
       
       // Handle redirect if exists
       const currentRedirectPath = redirectPath;
@@ -156,17 +201,23 @@ const LoginScreen = () => {
           })
         );
       }
-    } catch (error) {
-      Alert.alert('Error', 'Google login failed');
+    } catch (error: any) {
+      console.error('[Google Auth] Backend verification failed:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Google login failed';
+      Alert.alert('Error', errorMessage);
     }
   };
 
   const handleAppleLogin = async () => {
+    if (!isAppleAuthAvailable()) {
+      showAppleAuthUnavailableAlert();
+      return;
+    }
     try {
-      const credential = await AppleAuthentication.signInAsync({
+      const credential = await signInWithApple({
         requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          AppleAuthenticationScope.FULL_NAME,
+          AppleAuthenticationScope.EMAIL,
         ],
       });
 
@@ -222,11 +273,23 @@ const LoginScreen = () => {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    if (promptAsync) {
-      promptAsync();
-    } else {
-      Alert.alert('Error', 'Google Sign In is not available');
+  const handleGoogleSignIn = async () => {
+    try {
+      if (!request) {
+        Alert.alert('Error', 'Google Sign In is not ready. Please wait a moment and try again.');
+        return;
+      }
+      
+      if (!promptAsync) {
+        Alert.alert('Error', 'Google Sign In is not available');
+        return;
+      }
+
+      console.log('[Google Auth] Starting Google Sign-In flow');
+      await promptAsync();
+    } catch (error: any) {
+      console.error('[Google Auth] Error starting sign-in:', error);
+      Alert.alert('Error', error.message || 'Failed to start Google Sign-In');
     }
   };
 

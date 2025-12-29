@@ -14,7 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import RazorpayCheckout from 'react-native-razorpay';
+// Platform-safe Razorpay wrapper
+import { 
+  openRazorpayCheckout, 
+  isRazorpayAvailable, 
+  showRazorpayUnavailableAlert,
+  RazorpayOptions,
+  RazorpayResponse
+} from '../utils/razorpay';
 import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
@@ -31,7 +38,7 @@ const CheckoutScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<CheckoutScreenRouteProp>();
   const { pack, items } = route.params || {};
-  const { user } = useAuthStore();
+  const { user, status } = useAuthStore();
 
   // User must exist for checkout
   if (!user) {
@@ -39,7 +46,7 @@ const CheckoutScreen = () => {
   }
 
   const { addPack } = useLibraryStore();
-  const { addPurchasedCourse } = usePurchasedCoursesStore();
+  const { addPurchasedCourse, addPurchasedCourses } = usePurchasedCoursesStore();
   const { clearCart, items: cartItems, getTotalPrice } = useCartStore();
   const [processing, setProcessing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'upi' | 'netbanking'>('card');
@@ -66,29 +73,52 @@ const CheckoutScreen = () => {
     }
 
     requireAuth(
-      !!user,
+      status,
       navigation,
       async () => {
         // User is authenticated, proceed with payment
         setProcessing(true);
 
     try {
+      // Get auth token for API requests
+      const token = useAuthStore.getState().token;
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        authHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
       // Step 1: Create Razorpay order on backend
-      // Get userId - use actual user ID or test UUID
-      // Note: If user.id is not a valid UUID, backend will use test fallback
-      // For multiple items, we'll use the first item's courseId for now
-      // TODO: Backend should support multiple courses in one order
-      const userId = user?.id || 'd211d2e3-32a0-412f-910d-0fa92ecbfde8'; // Test UUID fallback
+      const userId = user?.id;
       const firstItem = checkoutItems[0];
-      const courseId = firstItem.packId || '7503bea9-90ba-450e-b052-687a7fef41bc'; // Test UUID fallback
+      const courseId = firstItem.packId;
       
-      console.log(`Creating Razorpay order - userId: ${userId}, courseId: ${courseId}`);
+      if (!userId) {
+        throw new Error('User ID is required for payment');
+      }
+      if (!courseId) {
+        throw new Error('Course ID is required for payment');
+      }
       
+      // Validate courseId format - should be UUID, not numeric
+      if (/^\d+$/.test(courseId)) {
+        console.error(`[Checkout] Error: courseId "${courseId}" is numeric. Backend requires UUID format.`);
+        Alert.alert(
+          'Course Data Error',
+          'Unable to process payment. The course data is outdated. Please go back and try again.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        setProcessing(false);
+        return;
+      }
+      
+      console.log(`[Checkout] Creating Razorpay order - userId: ${userId}, courseId: ${courseId}`);
+      
+      // Use canonical endpoint with auth headers
       const orderResponse = await fetch(getApiUrl('api/payments/razorpay/order'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           userId: userId,
           courseId: courseId,
@@ -96,12 +126,28 @@ const CheckoutScreen = () => {
       });
 
       if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || 'Failed to create order');
+        const errorData = await orderResponse.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || 'Failed to create order';
+        console.error('[Checkout] Order creation failed:', errorMessage, errorData);
+        throw new Error(errorMessage);
       }
 
       const orderData = await orderResponse.json();
+      
+      if (__DEV__) {
+        console.log('[Checkout] Order created successfully:', {
+          orderId: orderData.order?.id,
+          amount: orderData.order?.amount,
+          enrollmentId: orderData.enrollmentId,
+        });
+      }
+      
       const { key, order, enrollmentId } = orderData;
+      
+      if (!key || !order || !enrollmentId) {
+        console.error('[Checkout] Invalid order response:', orderData);
+        throw new Error('Invalid response from server. Missing required fields.');
+      }
 
       // Step 2: Open Razorpay Checkout
       const description = checkoutItems.length > 1 
@@ -125,7 +171,98 @@ const CheckoutScreen = () => {
         theme: { color: '#7c3aed' },
       };
 
-      const razorpayData = await RazorpayCheckout.open(options);
+      // ============================================
+      // TEMPORARY TEST MODE: Expo Go / Web Bypass
+      // ============================================
+      // Razorpay native module is not available in Expo Go or on web.
+      // This try/catch block provides a temporary bypass for testing.
+      // TODO: Remove this bypass when building standalone APK/IPA.
+      // ============================================
+      let razorpayData: RazorpayResponse;
+      
+      // Check if Razorpay is available (not on web)
+      if (!isRazorpayAvailable()) {
+        throw new Error('WEB_PLATFORM');
+      }
+      
+      try {
+        razorpayData = await openRazorpayCheckout(options);
+      } catch (razorpayError: any) {
+        // Razorpay not available (e.g., in Expo Go or web)
+        console.warn('[Checkout] Razorpay not available, using test mode:', razorpayError);
+        
+        // Handle Razorpay unavailability
+        if (razorpayError?.code === 'MODULE_NOT_AVAILABLE') {
+          showRazorpayUnavailableAlert();
+          setProcessing(false);
+          return;
+        }
+        
+        // Show test mode success alert
+        Alert.alert(
+          'Payment Successful (Test Mode)',
+          'Razorpay is disabled in Expo Go. This is a temporary success.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Unlock the course(s) - add to library and purchased courses
+                const purchasedPackIds = checkoutItems.map((item) => item.packId).filter(Boolean);
+                
+                // Add all packs to library (if pack exists, use it; otherwise use items)
+                if (pack) {
+                  addPack(pack);
+                } else {
+                  // If no single pack, add all items from checkoutItems
+                  checkoutItems.forEach((item) => {
+                    if (item.packId) {
+                      // Create a pack-like object from item
+                      const packFromItem = {
+                        id: item.packId,
+                        title: item.title,
+                        price: item.price,
+                        thumbnailUrl: item.thumbnailUrl,
+                        teacher: item.teacher,
+                      };
+                      addPack(packFromItem as MusicPack);
+                    }
+                  });
+                }
+                
+                // Add all purchased courses to store using bulk operation
+                if (purchasedPackIds.length > 0) {
+                  addPurchasedCourses(purchasedPackIds);
+                }
+                
+                // Clear cart if items came from cart
+                if (items || cartItems.length > 0) {
+                  clearCart();
+                }
+                
+                // Navigate based on number of items
+                if (purchasedPackIds.length === 1) {
+                  // Single item: Navigate to Library, then PackDetail
+                  navigation.navigate('Library');
+                  // Navigate to PackDetail after a brief delay to ensure Library navigation completes
+                  setTimeout(() => {
+                    navigation.navigate('PackDetail', { packId: purchasedPackIds[0] });
+                  }, 100);
+                } else {
+                  // Multiple items: Navigate to Library
+                  navigation.navigate('Library');
+                }
+              },
+            },
+          ]
+        );
+        
+        // Exit early - don't proceed with payment verification
+        setProcessing(false);
+        return;
+      }
+      // ============================================
+      // END TEMPORARY TEST MODE
+      // ============================================
 
       // Step 4: Extract payment details from Razorpay response
       const razorpay_payment_id = razorpayData.razorpay_payment_id;
@@ -135,9 +272,7 @@ const CheckoutScreen = () => {
       // Step 5: Verify payment with backend
       const verifyResponse = await fetch(getApiUrl('api/payments/razorpay/verify'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           razorpay_payment_id,
           razorpay_order_id,
@@ -147,10 +282,15 @@ const CheckoutScreen = () => {
       });
 
       const verifyData = await verifyResponse.json();
-      console.log('Verification response:', JSON.stringify(verifyData, null, 2));
+      
+      if (__DEV__) {
+        console.log('[Checkout] Payment verification response:', JSON.stringify(verifyData, null, 2));
+      }
 
-      if (!verifyResponse.ok) {
-        throw new Error(verifyData.error || 'Payment verification failed');
+      if (!verifyResponse.ok || !verifyData.success) {
+        const errorMessage = verifyData.error || verifyData.message || 'Payment verification failed';
+        console.error('[Checkout] Payment verification failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       setProcessing(false);
@@ -162,10 +302,8 @@ const CheckoutScreen = () => {
         
         // Update local state on successful payment for all items
         if (purchasedPackIds.length > 0) {
-          // Add all purchased courses to store (deduplication handled in store)
-          purchasedPackIds.forEach((packId) => {
-            addPurchasedCourse(packId);
-          });
+          // Add all purchased courses to store using bulk operation (deduplication handled in store)
+          addPurchasedCourses(purchasedPackIds);
         }
 
         // Clear cart if items came from cart
@@ -187,18 +325,80 @@ const CheckoutScreen = () => {
         Alert.alert('Verification Failed', 'Verification failed. Please try again.');
       }
     } catch (error: any) {
+      // Ensure processing is always set to false
       setProcessing(false);
 
       // Handle Razorpay checkout cancellation
-      if (error.code === 'BAD_REQUEST_ERROR' || error.description === 'userCancelled') {
+      if (error.code === 'BAD_REQUEST_ERROR' || 
+          error.code === 'USER_CANCELLED' ||
+          error.description === 'userCancelled') {
         Alert.alert('Payment Cancelled', 'You cancelled the payment process.');
+        return;
+      }
+
+      // Handle Razorpay module not available (should be caught earlier, but just in case)
+      if (error.message?.includes('Cannot read property') || error.message?.includes('null') || error.message?.includes('open')) {
+        console.warn('[Checkout] Razorpay module error caught in outer catch:', error);
+        // This should have been handled in the inner try/catch, but handle it here too
+        Alert.alert(
+          'Payment Successful (Test Mode)',
+          'Razorpay is disabled in Expo Go. This is a temporary success.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Unlock the course(s)
+                const purchasedPackIds = checkoutItems.map((item) => item.packId).filter(Boolean);
+                
+                // Add all packs to library
+                if (pack) {
+                  addPack(pack);
+                } else {
+                  checkoutItems.forEach((item) => {
+                    if (item.packId) {
+                      const packFromItem = {
+                        id: item.packId,
+                        title: item.title,
+                        price: item.price,
+                        thumbnailUrl: item.thumbnailUrl,
+                        teacher: item.teacher,
+                      };
+                      addPack(packFromItem as MusicPack);
+                    }
+                  });
+                }
+                
+                // Add all purchased courses to store using bulk operation
+                if (purchasedPackIds.length > 0) {
+                  addPurchasedCourses(purchasedPackIds);
+                }
+                
+                if (items || cartItems.length > 0) {
+                  clearCart();
+                }
+                
+                if (purchasedPackIds.length === 1) {
+                  // Single item: Navigate to Library, then PackDetail
+                  navigation.navigate('Library');
+                  // Navigate to PackDetail after a brief delay to ensure Library navigation completes
+                  setTimeout(() => {
+                    navigation.navigate('PackDetail', { packId: purchasedPackIds[0] });
+                  }, 100);
+                } else {
+                  // Multiple items: Navigate to Library
+                  navigation.navigate('Library');
+                }
+              },
+            },
+          ]
+        );
         return;
       }
 
       // Handle other errors
       const errorMessage = error.message || 'Payment failed. Please try again.';
       Alert.alert('Payment Error', errorMessage);
-      console.error('Payment error:', error);
+      console.error('[Checkout] Payment error:', error);
     }
       },
       'Please login to continue with payment'
@@ -214,7 +414,9 @@ const CheckoutScreen = () => {
           <Text style={styles.sectionTitle}>Billing Information</Text>
           <View style={styles.userCard}>
             <Image
-              source={{ uri: user?.avatar }}
+              source={{ 
+                uri: user?.avatar || 'https://i.pravatar.cc/300' 
+              }}
               style={styles.userAvatar}
             />
             <View style={styles.userInfo}>

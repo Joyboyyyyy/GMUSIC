@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as SecureStore from 'expo-secure-store';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../utils/api';
+import { deleteItem } from '../../utils/storage';
 
 const PENDING_EMAIL_KEY = 'pendingEmail';
 
 type VerifyEmailScreenRouteProp = RouteProp<AuthStackParamList, 'VerifyEmail'>;
 type VerifyEmailScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
 
-interface Props {
-  route: VerifyEmailScreenRouteProp;
-  navigation: VerifyEmailScreenNavigationProp;
-}
-
-const VerifyEmailScreen: React.FC<Props> = ({ route, navigation }) => {
+const VerifyEmailScreen = () => {
+  const route = useRoute<VerifyEmailScreenRouteProp>();
+  const navigation = useNavigation<VerifyEmailScreenNavigationProp>();
   const { email } = route.params;
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -26,21 +23,40 @@ const VerifyEmailScreen: React.FC<Props> = ({ route, navigation }) => {
   const checkVerification = async () => {
     try {
       setLoading(true);
+      console.log('[VerifyEmailScreen] Checking verification for email:', email);
+      
       const res = await api.get(`/api/auth/check-verification?email=${encodeURIComponent(email)}`);
       const data = res.data?.data || res.data;
 
+      console.log('[VerifyEmailScreen] Verification status response:', data);
+
       if (data.emailVerified || data.isVerified) {
-        // Delete pending email from SecureStore
-        await SecureStore.deleteItemAsync(PENDING_EMAIL_KEY);
+        // Delete pending email from storage
+        await deleteItem(PENDING_EMAIL_KEY);
         
-        Alert.alert('Success', 'Email verified successfully!');
+        console.log('[VerifyEmailScreen] Email verified, refreshing user data');
         // Update auth state and navigate to Main
         await fetchMe(); // Refresh user data
-        navigation.navigate('Main' as never);
+        
+        Alert.alert('Success', 'Email verified successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to Main using CommonActions.reset like LoginScreen
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+                })
+              );
+            },
+          },
+        ]);
       } else {
-        Alert.alert('Not Verified', 'Your email is not verified yet. Please check your inbox.');
+        Alert.alert('Not Verified', 'Your email is not verified yet. Please check your inbox and click the verification link.');
       }
     } catch (error: any) {
+      console.error('[VerifyEmailScreen] Check verification error:', error);
       Alert.alert('Error', error.response?.data?.message || error.message || 'Something went wrong');
     } finally {
       setLoading(false);
@@ -50,9 +66,14 @@ const VerifyEmailScreen: React.FC<Props> = ({ route, navigation }) => {
   const resendEmail = async () => {
     try {
       setResending(true);
+      console.log('[VerifyEmailScreen] Resending verification email for:', email);
+      
       await api.post('/api/auth/resend-verification', { email });
-      Alert.alert('Email Sent', 'A new verification email has been sent.');
+      
+      console.log('[VerifyEmailScreen] Verification email resent successfully');
+      Alert.alert('Email Sent', 'A new verification email has been sent. Please check your inbox.');
     } catch (error: any) {
+      console.error('[VerifyEmailScreen] Resend email error:', error);
       Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to resend email');
     } finally {
       setResending(false);

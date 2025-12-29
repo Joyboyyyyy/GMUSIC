@@ -21,6 +21,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  // IMPORTANT: Subscribe directly to Zustand state - ProfileScreen will automatically re-render when user changes
   const { user, logout } = useAuthStore();
   const { purchasedPacks } = useLibraryStore();
 
@@ -41,6 +42,12 @@ const ProfileScreen = () => {
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       onPress: () => navigation.navigate('EditProfile'),
+    },
+    {
+      icon: 'library-outline',
+      title: 'My Library',
+      subtitle: 'View your purchased lessons',
+      onPress: () => navigation.navigate('Library'),
     },
     {
       icon: 'card-outline',
@@ -86,7 +93,13 @@ const ProfileScreen = () => {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Profile Header */}
           <View style={styles.header}>
-            <Image source={{ uri: user?.avatar }} style={styles.avatar} />
+            <Image 
+              source={{ 
+                uri: user?.avatar || 'https://i.pravatar.cc/300' 
+              }} 
+              style={styles.avatar}
+              defaultSource={{ uri: 'https://i.pravatar.cc/300' }}
+            />
             <Text style={styles.name}>{user?.name}</Text>
             <Text style={styles.email}>{user?.email}</Text>
           </View>

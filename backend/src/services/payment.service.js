@@ -1,4 +1,4 @@
-import prisma from '../config/prismaClient.js';
+import db from '../lib/db.js';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
@@ -6,7 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 class PaymentService {
   async createPaymentIntent(userId, courseId, amount) {
     // Get course details
-    const course = await prisma.course.findUnique({
+    const course = await db.course.findUnique({
       where: { id: courseId },
     });
 
@@ -15,7 +15,7 @@ class PaymentService {
     }
 
     // Check if already purchased
-    const existingPurchase = await prisma.purchase.findFirst({
+    const existingPurchase = await db.purchase.findFirst({
       where: {
         userId,
         courseId,
@@ -39,7 +39,7 @@ class PaymentService {
     });
 
     // Create purchase record
-    const purchase = await prisma.purchase.create({
+    const purchase = await db.purchase.create({
       data: {
         userId,
         courseId,
@@ -58,7 +58,7 @@ class PaymentService {
   }
 
   async confirmPayment(purchaseId, paymentData) {
-    const purchase = await prisma.purchase.findUnique({
+    const purchase = await db.purchase.findUnique({
       where: { id: purchaseId },
       include: { course: true },
     });
@@ -68,7 +68,7 @@ class PaymentService {
     }
 
     // Update purchase status
-    const updatedPurchase = await prisma.purchase.update({
+    const updatedPurchase = await db.purchase.update({
       where: { id: purchaseId },
       data: {
         status: 'COMPLETED',
@@ -77,7 +77,7 @@ class PaymentService {
     });
 
     // Create enrollment
-    await prisma.enrollment.create({
+    await db.enrollment.create({
       data: {
         userId: purchase.userId,
         courseId: purchase.courseId,
@@ -86,7 +86,7 @@ class PaymentService {
     });
 
     // Update course students count
-    await prisma.course.update({
+    await db.course.update({
       where: { id: purchase.courseId },
       data: {
         studentsCount: { increment: 1 },
@@ -97,7 +97,7 @@ class PaymentService {
   }
 
   async getUserPurchases(userId) {
-    const purchases = await prisma.purchase.findMany({
+    const purchases = await db.purchase.findMany({
       where: { userId },
       include: {
         course: true,
@@ -109,7 +109,7 @@ class PaymentService {
   }
 
   async refundPurchase(purchaseId) {
-    const purchase = await prisma.purchase.findUnique({
+    const purchase = await db.purchase.findUnique({
       where: { id: purchaseId },
     });
 
@@ -129,13 +129,13 @@ class PaymentService {
     }
 
     // Update purchase status
-    await prisma.purchase.update({
+    await db.purchase.update({
       where: { id: purchaseId },
       data: { status: 'REFUNDED' },
     });
 
     // Remove enrollment
-    await prisma.enrollment.deleteMany({
+    await db.enrollment.deleteMany({
       where: {
         userId: purchase.userId,
         courseId: purchase.courseId,

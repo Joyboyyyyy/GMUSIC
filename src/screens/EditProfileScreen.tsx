@@ -20,6 +20,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../navigation/types';
+import { uploadAvatar } from '../utils/avatar';
+import { getSupabaseUserId } from '../utils/supabase';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -106,18 +108,75 @@ const EditProfileScreen = () => {
 
     setLoading(true);
     try {
+      let avatarUrl = avatar;
+      
+      // If there's a pending image (newly picked), upload it to Supabase
+      if (pendingImage && pendingImage !== user?.avatar) {
+        try {
+          // Get Supabase user ID
+          const userId = await getSupabaseUserId();
+          
+          if (!userId) {
+            throw new Error('Unable to get user ID. Please ensure you are logged in.');
+          }
+          
+          console.log('[EditProfile] Uploading avatar for user:', userId);
+          
+          // Upload avatar to Supabase Storage
+          avatarUrl = await uploadAvatar(pendingImage, userId);
+          
+          console.log('[EditProfile] Avatar uploaded successfully:', avatarUrl);
+          
+          // Clear pending image after successful upload
+          setPendingImage(null);
+        } catch (uploadError: any) {
+          console.error('[EditProfile] Avatar upload failed:', uploadError);
+          Alert.alert(
+            'Upload Error',
+            `Failed to upload avatar: ${uploadError.message}. Your profile will be saved without the new avatar.`,
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
+              { 
+                text: 'Save Anyway', 
+                onPress: async () => {
+                  // Continue with save using existing avatar
+                  try {
+                    await updateUser({
+                      name: name.trim(),
+                      email: email.trim(),
+                      bio: bio.trim(),
+                      avatar: user?.avatar || avatar, // Use existing avatar if upload failed
+                    });
+                    Alert.alert('Success! 🎉', 'Your profile has been updated (avatar upload failed)', [
+                      { text: 'OK', onPress: () => navigation.goBack() },
+                    ]);
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to update profile. Please try again.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              },
+            ]
+          );
+          return;
+        }
+      }
+      
+      // Update user profile with new avatar URL
       await updateUser({
         name: name.trim(),
         email: email.trim(),
         bio: bio.trim(),
-        avatar,
+        avatar: avatarUrl,
       });
 
       Alert.alert('Success! 🎉', 'Your profile has been updated successfully', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } catch (error: any) {
+      console.error('[EditProfile] Save error:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -137,7 +196,9 @@ const EditProfileScreen = () => {
           <View style={styles.photoSection}>
             <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage}>
               <Image
-                source={{ uri: avatar || 'https://i.pravatar.cc/300' }}
+                source={{ 
+                  uri: pendingImage || avatar || user?.avatar || 'https://i.pravatar.cc/300' 
+                }}
                 style={styles.avatar}
               />
               <View style={styles.cameraIcon}>

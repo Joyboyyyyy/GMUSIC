@@ -19,6 +19,7 @@ import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 import { mockPacks } from '../data/mockData';
 import PackCard from '../components/PackCard';
 import ProtectedScreen from '../components/ProtectedScreen';
+import ActivityChart from '../components/ActivityChart';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -63,30 +64,6 @@ const DashboardScreen = () => {
     currentStreak: 5,
   };
 
-  const quickActions = [
-    {
-      id: '1',
-      title: 'Practice Timer',
-      icon: 'timer-outline',
-      color: '#7c3aed',
-      onPress: () => console.log('Practice Timer'),
-    },
-    {
-      id: '2',
-      title: 'Upload Recording',
-      icon: 'mic-outline',
-      color: '#ec4899',
-      onPress: () => console.log('Upload Recording'),
-    },
-    {
-      id: '3',
-      title: 'Manage Notifications',
-      icon: 'notifications-outline',
-      color: '#06b6d4',
-      onPress: () => navigation.navigate('NotificationSettings'),
-    },
-  ];
-
   const handlePackPress = (packId: string) => {
     navigation.navigate('PackDetail', { packId });
   };
@@ -103,8 +80,26 @@ const DashboardScreen = () => {
               </Text>
               <Text style={styles.subtitle}>Ready to learn today?</Text>
             </View>
-            <TouchableOpacity style={styles.statsButton}>
-              <Ionicons name="stats-chart" size={24} color="#7c3aed" />
+          </View>
+
+          {/* Book a Room Shortcut */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.bookRoomCard}
+              onPress={() => navigation.navigate('Main', { screen: 'BookRoom' })}
+            >
+              <View style={styles.bookRoomContent}>
+                <View style={styles.bookRoomIcon}>
+                  <Ionicons name="calendar-outline" size={32} color="#7c3aed" />
+                </View>
+                <View style={styles.bookRoomText}>
+                  <Text style={styles.bookRoomTitle}>Book a Room</Text>
+                  <Text style={styles.bookRoomSubtitle}>
+                    Reserve a practice room for your sessions
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -137,6 +132,12 @@ const DashboardScreen = () => {
                 <Text style={styles.statLabel}>Day Streak</Text>
               </View>
             </View>
+          </View>
+
+          {/* Activity This Week */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Activity This Week</Text>
+            <ActivityChart />
           </View>
 
           {/* Continue Learning */}
@@ -182,30 +183,6 @@ const DashboardScreen = () => {
             </View>
           )}
 
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-
-            <View style={styles.quickActionsGrid}>
-              {quickActions.map((action) => (
-                <TouchableOpacity
-                  key={action.id}
-                  style={styles.quickActionCard}
-                  onPress={action.onPress}
-                >
-                  <View
-                    style={[
-                      styles.quickActionIcon,
-                      { backgroundColor: action.color },
-                    ]}
-                  >
-                    <Ionicons name={action.icon as any} size={28} color="#fff" />
-                  </View>
-                  <Text style={styles.quickActionTitle}>{action.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
 
           {/* Tip of the Day */}
           <View style={styles.section}>
@@ -312,15 +289,6 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 28, fontWeight: 'bold', color: '#1f2937' },
   subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  statsButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-  },
 
   /* --- Shared Sections --- */
   section: { marginBottom: 28 },
@@ -407,34 +375,6 @@ const styles = StyleSheet.create({
   },
   continueButtonText: { fontSize: 16, color: '#fff', fontWeight: 'bold' },
 
-  /* --- Quick Actions --- */
-  quickActionsGrid: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  quickActionCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    elevation: 2,
-  },
-  quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  quickActionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-
   /* --- Tip of the Day --- */
   tipCard: {
     marginHorizontal: 20,
@@ -517,6 +457,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     fontWeight: '500',
+  },
+  bookRoomCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  bookRoomContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bookRoomIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f3e8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  bookRoomText: {
+    flex: 1,
+  },
+  bookRoomTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  bookRoomSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
   },
 });
 

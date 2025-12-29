@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,16 +16,26 @@ import { mockPacks, mockTeachers, mockTestimonials } from '../data/mockData';
 import PackCard from '../components/PackCard';
 import TestimonialCard from '../components/TestimonialCard';
 import { useAuthStore } from '../store/authStore';
+import { useCourseStore } from '../store/courseStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuthStore();
+  const { courses, fetchCourses, isLoading } = useCourseStore();
 
-  const featuredPacks = mockPacks.slice(0, 4);
-  const trendingPacks = mockPacks.slice(2, 6);
-  const newPacks = mockPacks.slice(4, 8);
+  // Fetch courses from API on mount
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  // Use API courses if available, fallback to mock data
+  const packs = courses.length > 0 ? courses : mockPacks;
+  
+  const featuredPacks = packs.slice(0, 4);
+  const trendingPacks = packs.slice(Math.min(2, packs.length), Math.min(6, packs.length));
+  const newPacks = packs.slice(Math.min(4, packs.length), Math.min(8, packs.length));
 
   const handlePackPress = (packId: string) => {
     navigation.navigate('PackDetail', { packId });
@@ -85,7 +95,7 @@ const HomeScreen = () => {
 
         {/* Categories Quick Access */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Browse by Category</Text>
+          <Text style={styles.sectionTitle}>   Browse by Category</Text>
           <View style={styles.categoriesGrid}>
             {[
               { name: 'Guitar', icon: '🎸', color: '#ef4444' },

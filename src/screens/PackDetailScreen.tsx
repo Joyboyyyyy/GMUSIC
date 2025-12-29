@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -17,7 +18,10 @@ import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 import { useCartStore, CartItem } from '../store/cartStore';
+import { useCourseStore } from '../store/courseStore';
 import { requireAuth } from '../utils/auth';
+import { getApiUrl } from '../config/api';
+import { MusicPack } from '../types';
 
 type PackDetailScreenRouteProp = RouteProp<RootStackParamList, 'PackDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -26,15 +30,89 @@ const PackDetailScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PackDetailScreenRouteProp>();
   const { packId } = route.params;
-  const { isAuthenticated } = useAuthStore();
+  const { status } = useAuthStore();
   const { hasPack } = useLibraryStore();
   const { hasPurchased } = usePurchasedCoursesStore();
   const { addToCart } = useCartStore();
+  const { getCourseById, fetchCourses } = useCourseStore();
+  
+  const [pack, setPack] = useState<MusicPack | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const pack = mockPacks.find((p) => p.id === packId);
+  // Fetch course data
+  useEffect(() => {
+    const loadCourse = async () => {
+      setIsLoading(true);
+      
+      // First try to get from store
+      let course: MusicPack | null | undefined = getCourseById(packId);
+      
+      if (!course) {
+        // Try fetching all courses first
+        await fetchCourses();
+        course = getCourseById(packId);
+      }
+      
+      if (!course) {
+        // Try fetching single course from API
+        try {
+          const response = await fetch(getApiUrl(`api/courses/${packId}`));
+          if (response.ok) {
+            const data = await response.json();
+            const courseData = data.data || data;
+            if (courseData) {
+              course = {
+                id: courseData.id,
+                title: courseData.title,
+                description: courseData.description || '',
+                teacher: courseData.teacher || {
+                  id: 'default',
+                  name: 'Gretex Music',
+                  bio: 'Professional music instructor',
+                  avatarUrl: 'https://i.pravatar.cc/150?img=12',
+                  rating: 4.8,
+                  students: 1000,
+                },
+                price: courseData.price,
+                thumbnailUrl: courseData.thumbnailUrl || 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=800',
+                category: courseData.category || 'Guitar',
+                rating: courseData.rating || 4.5,
+                studentsCount: courseData.studentsCount || 0,
+                tracksCount: courseData.tracksCount || 0,
+                duration: courseData.duration || 0,
+                level: courseData.level || 'Beginner',
+                createdAt: courseData.createdAt || new Date().toISOString(),
+              };
+            }
+          }
+        } catch (error) {
+          console.warn('[PackDetail] Failed to fetch course from API:', error);
+        }
+      }
+      
+      // Fallback to mock data if API fails
+      if (!course) {
+        course = mockPacks.find((p) => p.id === packId) || null;
+      }
+      
+      setPack(course);
+      setIsLoading(false);
+    };
+    
+    loadCourse();
+  }, [packId]);
+
   const tracks = mockTracks[packId] || [];
   // Check both stores for backward compatibility
   const isPurchased = hasPurchased(packId) || hasPack(packId);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#7c3aed" />
+      </View>
+    );
+  }
 
   if (!pack) {
     return (
@@ -61,7 +139,7 @@ const PackDetailScreen = () => {
 
   const handleBuyNow = () => {
     requireAuth(
-      isAuthenticated,
+      status,
       navigation,
       () => {
         navigation.navigate('Checkout', { pack });
@@ -89,7 +167,7 @@ const PackDetailScreen = () => {
 
     // Non-preview, non-purchased tracks require authentication
     requireAuth(
-      isAuthenticated,
+      status,
       navigation,
       () => {
         // After login, user can purchase or access if already purchased
