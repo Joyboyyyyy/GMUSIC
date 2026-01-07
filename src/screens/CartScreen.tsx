@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   ScrollView,
   StyleSheet,
   Image,
@@ -17,6 +16,8 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import { requireAuth } from '../utils/auth';
+import { Text, Card, Button } from '../components/ui';
+import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
 import * as Haptics from 'expo-haptics';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -50,14 +51,16 @@ const CartScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>
-            <Ionicons name="cart-outline" size={64} color={theme.primary} />
+            <Ionicons name="cart-outline" size={COMPONENT_SIZES.icon.xl} color={theme.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySubtitle}>Add some music courses to get started</Text>
-          <TouchableOpacity style={styles.browseButton} onPress={() => navigation.navigate('Main', { screen: 'Browse' })}>
-            <Text style={styles.browseButtonText}>Browse Courses</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          <Text variant="h4" style={{ color: theme.text, marginBottom: SPACING.xs }}>Your cart is empty</Text>
+          <Text variant="body" style={{ color: theme.textSecondary, textAlign: 'center', marginBottom: SPACING.xl }}>Add some music courses to get started</Text>
+          <Button 
+            title="Browse Courses" 
+            onPress={() => navigation.navigate('Browse')}
+            icon="arrow-forward"
+            iconPosition="right"
+          />
         </View>
       </SafeAreaView>
     );
@@ -67,54 +70,51 @@ const CartScreen = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Shopping Cart</Text>
-          <Text style={styles.itemCount}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
+          <Text variant="h3" style={{ color: theme.text, marginBottom: SPACING.xxs }}>Shopping Cart</Text>
+          <Text variant="body" style={{ color: theme.textSecondary }}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
         </View>
 
         <View style={styles.itemsContainer}>
           {items.map((item) => (
-            <View key={item.id} style={styles.itemCard}>
+            <Card key={item.id} style={styles.itemCard} elevation="sm">
               <Image source={{ uri: item.thumbnailUrl }} style={styles.itemThumbnail} />
               <View style={styles.itemInfo}>
-                <Text style={styles.itemTitle} numberOfLines={2}>{item.title}</Text>
-                <Text style={styles.itemTeacher}>{item.teacher.name}</Text>
-                <Text style={styles.itemPrice}>₹{item.price}</Text>
+                <Text variant="label" numberOfLines={2} style={{ color: theme.text, marginBottom: SPACING.xxs }}>{item.title}</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary, marginBottom: SPACING.xs }}>{item.teacher.name}</Text>
+                <Text variant="h4" style={{ color: theme.primary }}>₹{item.price}</Text>
               </View>
               <TouchableOpacity 
                 style={styles.removeButton} 
                 onPress={() => handleRemoveItem(item.packId)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="close" size={20} color={theme.textMuted} />
+                <Ionicons name="close" size={COMPONENT_SIZES.icon.sm} color={theme.textMuted} />
               </TouchableOpacity>
-            </View>
+            </Card>
           ))}
         </View>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Order Summary</Text>
+        <Card style={styles.summaryCard} elevation="sm">
+          <Text variant="label" style={{ color: theme.text, marginBottom: SPACING.md }}>Order Summary</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal ({totalItems} items)</Text>
-            <Text style={styles.summaryValue}>₹{totalPrice}</Text>
+            <Text variant="body" style={{ color: theme.textSecondary }}>Subtotal ({totalItems} items)</Text>
+            <Text variant="body" style={{ color: theme.text, fontWeight: '500' }}>₹{totalPrice}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₹{totalPrice}</Text>
+            <Text variant="label" style={{ color: theme.text }}>Total</Text>
+            <Text variant="h4" style={{ color: theme.primary }}>₹{totalPrice}</Text>
           </View>
-        </View>
+        </Card>
         <View style={{ height: 100 }} />
       </ScrollView>
 
       <View style={styles.bottomBar}>
         <View>
-          <Text style={styles.bottomLabel}>Total</Text>
-          <Text style={styles.bottomTotalPrice}>₹{totalPrice}</Text>
+          <Text variant="caption" style={{ color: theme.textSecondary }}>Total</Text>
+          <Text variant="h3" style={{ color: theme.primary }}>₹{totalPrice}</Text>
         </View>
-        <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
-          <Text style={styles.checkoutButtonText}>Checkout</Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
-        </TouchableOpacity>
+        <Button title="Checkout" onPress={handleCheckout} icon="arrow-forward" iconPosition="right" size="lg" />
       </View>
     </SafeAreaView>
   );
@@ -123,36 +123,18 @@ const CartScreen = () => {
 const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
   scrollView: { flex: 1 },
-  header: { padding: 20, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
-  itemCount: { fontSize: 14, color: theme.textSecondary },
-  itemsContainer: { padding: 16, gap: 12 },
-  itemCard: { flexDirection: 'row', backgroundColor: theme.card, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  itemThumbnail: { width: 140, height: 140, borderRadius: 12, backgroundColor: theme.surfaceVariant, marginRight: 14 },
-  itemInfo: { flex: 1, justifyContent: 'center', paddingVertical: 4 },
-  itemTitle: { fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 6 },
-  itemTeacher: { fontSize: 14, color: theme.textSecondary, marginBottom: 8 },
-  itemPrice: { fontSize: 18, fontWeight: '700', color: theme.primary },
-  removeButton: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.surfaceVariant, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
-  summaryCard: { backgroundColor: theme.card, margin: 16, padding: 20, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  summaryTitle: { fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 16 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  summaryLabel: { fontSize: 14, color: theme.textSecondary },
-  summaryValue: { fontSize: 14, color: theme.text, fontWeight: '500' },
-  divider: { height: 1, backgroundColor: theme.border, marginVertical: 12 },
-  totalLabel: { fontSize: 16, fontWeight: '600', color: theme.text },
-  totalValue: { fontSize: 20, fontWeight: 'bold', color: theme.primary },
-  bottomBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 20, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 10 },
-  bottomLabel: { fontSize: 12, color: theme.textSecondary, marginBottom: 2 },
-  bottomTotalPrice: { fontSize: 24, fontWeight: 'bold', color: theme.primary },
-  checkoutButton: { flexDirection: 'row', backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, alignItems: 'center', gap: 8, shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  checkoutButtonText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyIconContainer: { width: 120, height: 120, borderRadius: 60, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  emptyTitle: { fontSize: 22, fontWeight: 'bold', color: theme.text, marginBottom: 8 },
-  emptySubtitle: { fontSize: 15, color: theme.textSecondary, textAlign: 'center', marginBottom: 32 },
-  browseButton: { flexDirection: 'row', backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, alignItems: 'center', gap: 8 },
-  browseButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  header: { padding: SPACING.screenPadding, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
+  itemsContainer: { padding: SPACING.md, gap: SPACING.sm },
+  itemCard: { flexDirection: 'row', padding: SPACING.sm },
+  itemThumbnail: { width: 140, height: 140, borderRadius: RADIUS.md, backgroundColor: theme.surfaceVariant, marginRight: SPACING.sm },
+  itemInfo: { flex: 1, justifyContent: 'center', paddingVertical: SPACING.xxs },
+  removeButton: { width: SPACING.xl, height: SPACING.xl, borderRadius: SPACING.md, backgroundColor: theme.surfaceVariant, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
+  summaryCard: { margin: SPACING.md, padding: SPACING.screenPadding },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACING.sm },
+  divider: { height: 1, backgroundColor: theme.border, marginVertical: SPACING.sm },
+  bottomBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md, paddingBottom: SPACING.screenPadding, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, ...SHADOWS.xl },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACING.xxl },
+  emptyIconContainer: { width: 120, height: 120, borderRadius: 60, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.lg },
 });
 
 export default CartScreen;

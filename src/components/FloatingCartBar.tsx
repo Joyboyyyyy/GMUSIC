@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Animated,
@@ -11,6 +10,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
+import { Text } from './ui';
+import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -84,19 +85,19 @@ const FloatingCartBar: React.FC<FloatingCartBarProps> = ({ visible = true }) => 
       >
         <View style={styles.leftSection}>
           <View style={styles.itemCountBadge}>
-            <Text style={styles.itemCountText}>{totalItems}</Text>
+            <Text variant="label" style={{ color: '#7c3aed', fontWeight: '800' }}>{totalItems}</Text>
           </View>
           <View style={styles.textContainer}>
-            <Text style={styles.itemsText}>
+            <Text variant="caption" style={{ color: 'rgba(255,255,255,0.8)' }}>
               {totalItems} {totalItems === 1 ? 'item' : 'items'}
             </Text>
-            <Text style={styles.priceText}>₹{totalPrice.toLocaleString()}</Text>
+            <Text variant="label" style={{ color: '#fff', fontWeight: '700' }}>₹{totalPrice.toLocaleString()}</Text>
           </View>
         </View>
         
         <View style={styles.rightSection}>
-          <Text style={styles.viewCartText}>View Cart</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Text variant="label" style={{ color: '#fff', fontWeight: '700' }}>View Cart</Text>
+          <Ionicons name="arrow-forward" size={COMPONENT_SIZES.icon.xs} color="#fff" />
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -113,58 +114,35 @@ const styles = StyleSheet.create({
   },
   bar: {
     backgroundColor: '#7c3aed',
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    ...SHADOWS.xl,
     shadowColor: '#7c3aed',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.sm,
   },
   itemCountBadge: {
     backgroundColor: '#fff',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    minWidth: 32,
+    borderRadius: RADIUS.xs,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.xxs,
+    minWidth: SPACING.xl,
     alignItems: 'center',
   },
-  itemCountText: {
-    color: '#7c3aed',
-    fontWeight: '800',
-    fontSize: 14,
-  },
   textContainer: {
-    gap: 2,
-  },
-  itemsText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  priceText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    gap: SPACING.xxs,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  viewCartText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
+    gap: SPACING.xxs,
   },
 });
 

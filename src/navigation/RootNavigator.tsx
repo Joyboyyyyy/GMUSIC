@@ -12,6 +12,7 @@ import TrackPlayerScreen from '../screens/TrackPlayerScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationSettingsScreen from '../screens/settings/NotificationSettingsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
 import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import CartScreen from '../screens/CartScreen';
@@ -176,6 +177,18 @@ const RootNavigator = () => {
         options={{
           headerShown: true,
           headerTitle: 'Notification Settings',
+          headerStyle: {
+            backgroundColor: theme.surface,
+          },
+          headerTintColor: theme.text,
+        }}
+      />
+      <Stack.Screen 
+        name="Notifications" 
+        component={NotificationsScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Notifications',
           headerStyle: {
             backgroundColor: theme.surface,
           },

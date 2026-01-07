@@ -1,24 +1,26 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import { MapView, Camera, PointAnnotation, setAccessToken } from '@maplibre/maplibre-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import BookRoomScreen from '../screens/booking/BookRoomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CartIcon from '../components/CartIcon';
+import NotificationBell from '../components/NotificationBell';
 import FloatingCartBar from '../components/FloatingCartBar';
 import { buildingApi } from '../services/api.service';
 import { Building } from '../types';
 import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 import { MainTabParamList, RootStackParamList } from './types';
+import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
 
 // Initialize MapLibre (no API key needed)
-MapLibreGL.setAccessToken(null);
+setAccessToken(null);
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -28,10 +30,22 @@ const NearbyBuildingsScreen: React.FC = () => {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const { isDark } = useThemeStore();
   const theme = getTheme(isDark);
   const [cartBarVisible, setCartBarVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const cardAnimation = useRef(new Animated.Value(0)).current;
+
+  // Animate card in/out
+  useEffect(() => {
+    Animated.spring(cardAnimation, {
+      toValue: selectedBuilding ? 1 : 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  }, [selectedBuilding]);
 
   const fetchAllBuildings = async () => {
     try {
@@ -97,7 +111,7 @@ const NearbyBuildingsScreen: React.FC = () => {
 
         <View style={styles.mapSection}>
           <View style={styles.mapContainer}>
-            <MapLibreGL.MapView
+            <MapView
               style={styles.map}
               mapStyle={isDark 
                 ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
@@ -105,7 +119,7 @@ const NearbyBuildingsScreen: React.FC = () => {
               logoEnabled={false}
               attributionEnabled={false}
             >
-              <MapLibreGL.Camera
+              <Camera
                 defaultSettings={{
                   centerCoordinate: [72.8777, 19.0760], // Mumbai center
                   zoomLevel: 8,
@@ -143,25 +157,19 @@ const NearbyBuildingsScreen: React.FC = () => {
                 }
                 
                 return (
-                  <MapLibreGL.PointAnnotation
+                  <PointAnnotation
                     key={building.id}
                     id={`marker-${building.id}`}
                     coordinate={[lng, lat]}
-                    onSelected={() => handleBuildingPress(building)}
+                    onSelected={() => setSelectedBuilding(building)}
                   >
                     <View style={[styles.marker, { backgroundColor: building.visibilityType === 'PUBLIC' ? '#10b981' : '#f59e0b' }]}>
                       <Ionicons name="musical-notes" size={16} color="#fff" />
                     </View>
-                    <MapLibreGL.Callout title={building.name}>
-                      <View style={styles.callout}>
-                        <Text style={styles.calloutTitle}>{building.name}</Text>
-                        <Text style={styles.calloutSubtitle}>{building.city}</Text>
-                      </View>
-                    </MapLibreGL.Callout>
-                  </MapLibreGL.PointAnnotation>
+                  </PointAnnotation>
                 );
               })}
-            </MapLibreGL.MapView>
+            </MapView>
             <View style={styles.mapLegend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
@@ -172,6 +180,53 @@ const NearbyBuildingsScreen: React.FC = () => {
                 <Text style={styles.legendText}>Private</Text>
               </View>
             </View>
+            
+            {/* Building Info Card Overlay */}
+            {selectedBuilding && (
+              <Animated.View style={[
+                styles.buildingInfoCard,
+                {
+                  opacity: cardAnimation,
+                  transform: [
+                    { scale: cardAnimation.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
+                    { translateY: cardAnimation.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) },
+                  ],
+                }
+              ]}>
+                <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedBuilding(null)}>
+                  <Ionicons name="close" size={16} color={theme.textMuted} />
+                </TouchableOpacity>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardIconContainer}>
+                    <Ionicons name="musical-notes" size={18} color="#fff" />
+                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedBuilding.name}</Text>
+                </View>
+                <View style={styles.cardDetails}>
+                  <View style={styles.cardDetailRow}>
+                    <Ionicons name="location-outline" size={14} color={theme.textSecondary} />
+                    <Text style={styles.cardDetailText} numberOfLines={1}>{selectedBuilding.address ? `${selectedBuilding.address}, ${selectedBuilding.city}` : selectedBuilding.city}</Text>
+                  </View>
+                  <View style={styles.cardDetailRow}>
+                    <Ionicons name="book-outline" size={14} color={theme.textSecondary} />
+                    <Text style={styles.cardDetailText}>{selectedBuilding.courses?.length || (selectedBuilding as any).courseCount || 0} courses available</Text>
+                  </View>
+                  <View style={styles.cardDetailRow}>
+                    <Ionicons name="business-outline" size={14} color={theme.textSecondary} />
+                    <Text style={styles.cardDetailText}>{selectedBuilding.musicRoomCount || 0} music rooms</Text>
+                  </View>
+                </View>
+                <TouchableOpacity 
+                  style={styles.viewCoursesButton} 
+                  onPress={() => {
+                    setSelectedBuilding(null);
+                    handleBuildingPress(selectedBuilding);
+                  }}
+                >
+                  <Text style={styles.viewCoursesText}>View Courses</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
           </View>
         </View>
 
@@ -224,45 +279,110 @@ const NearbyBuildingsScreen: React.FC = () => {
 const createNearbyStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, fontSize: 14, color: theme.textSecondary },
-  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 },
+  loadingText: { marginTop: SPACING.sm, fontSize: 14, color: theme.textSecondary },
+  header: { paddingHorizontal: SPACING.screenPadding, paddingTop: SPACING.xs, paddingBottom: SPACING.md },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: theme.text },
-  headerSubtitle: { fontSize: 14, color: theme.textSecondary, marginTop: 2 },
-  mapSection: { paddingHorizontal: 16, marginBottom: 24 },
-  mapContainer: { borderRadius: 20, height: 400, overflow: 'hidden', position: 'relative' },
+  headerSubtitle: { fontSize: 14, color: theme.textSecondary, marginTop: SPACING.xxs },
+  mapSection: { paddingHorizontal: SPACING.md, marginBottom: SPACING.lg },
+  mapContainer: { borderRadius: RADIUS.xl, height: 400, overflow: 'hidden', position: 'relative' },
   map: { flex: 1 },
-  marker: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 },
-  callout: { padding: 8, minWidth: 120 },
-  calloutTitle: { fontSize: 14, fontWeight: '700', color: theme.text },
-  calloutSubtitle: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
-  mapLegend: { position: 'absolute', bottom: 12, left: 12, flexDirection: 'row', backgroundColor: theme.card, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, gap: 16, elevation: 4 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  marker: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff', ...SHADOWS.lg },
+  // Building Info Card Overlay
+  buildingInfoCard: {
+    position: 'absolute',
+    top: SPACING.sm,
+    left: SPACING.sm,
+    width: 200,
+    backgroundColor: theme.card,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    ...SHADOWS.xl,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: SPACING.xs,
+    right: SPACING.xs,
+    width: SPACING.lg,
+    height: SPACING.lg,
+    borderRadius: SPACING.sm,
+    backgroundColor: theme.surfaceVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  cardIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.xs,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.xs,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+    flex: 1,
+    paddingRight: SPACING.lg,
+  },
+  cardDetails: {
+    marginBottom: SPACING.xs,
+    gap: SPACING.xxs,
+  },
+  cardDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xxs,
+  },
+  cardDetailText: {
+    fontSize: 12,
+    color: theme.textSecondary,
+  },
+  viewCoursesButton: {
+    backgroundColor: theme.primary,
+    borderRadius: RADIUS.xs,
+    paddingVertical: SPACING.xs,
+    alignItems: 'center',
+  },
+  viewCoursesText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  mapLegend: { position: 'absolute', bottom: SPACING.sm, left: SPACING.sm, flexDirection: 'row', backgroundColor: theme.card, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderRadius: RADIUS.full, gap: SPACING.md, ...SHADOWS.md },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xxs },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 12, color: theme.textSecondary, fontWeight: '600' },
-  allBuildingsSection: { paddingHorizontal: 16 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  allBuildingsSection: { paddingHorizontal: SPACING.md },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
   sectionTitle: { fontSize: 20, fontWeight: '700', color: theme.text },
   buildingCount: { fontSize: 13, color: theme.textSecondary },
-  buildingsList: { gap: 12 },
-  buildingCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 16, padding: 16, elevation: 2, marginBottom: 12 },
-  buildingIcon: { width: 56, height: 56, borderRadius: 14, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center' },
-  buildingContent: { flex: 1, marginLeft: 14 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  buildingsList: { gap: SPACING.sm },
+  buildingCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: RADIUS.lg, padding: SPACING.md, ...SHADOWS.sm, marginBottom: SPACING.sm },
+  buildingIcon: { width: 56, height: 56, borderRadius: RADIUS.md, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  buildingContent: { flex: 1, marginLeft: SPACING.sm },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   buildingName: { fontSize: 16, fontWeight: '700', color: theme.text, flex: 1 },
-  visibilityBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, gap: 3 },
+  visibilityBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.xxs, paddingVertical: SPACING.xxs, borderRadius: RADIUS.xs, gap: SPACING.xxs },
   publicBadge: { backgroundColor: isDark ? '#064e3b' : '#d1fae5' },
   privateBadge: { backgroundColor: isDark ? '#422006' : '#fef3c7' },
   visibilityText: { fontSize: 9, fontWeight: '600' },
   publicText: { color: '#10b981' },
   privateText: { color: '#f59e0b' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  buildingLocation: { fontSize: 13, color: theme.textSecondary, marginLeft: 4 },
-  statsRow: { flexDirection: 'row', marginTop: 8, gap: 12 },
-  statBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surfaceVariant, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statText: { fontSize: 12, color: theme.primary, fontWeight: '500', marginLeft: 4 },
-  emptyState: { alignItems: 'center', paddingVertical: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: theme.text, marginTop: 16 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.xxs },
+  buildingLocation: { fontSize: 13, color: theme.textSecondary, marginLeft: SPACING.xxs },
+  statsRow: { flexDirection: 'row', marginTop: SPACING.xs, gap: SPACING.sm },
+  statBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surfaceVariant, paddingHorizontal: SPACING.xs, paddingVertical: SPACING.xxs, borderRadius: RADIUS.xs },
+  statText: { fontSize: 12, color: theme.primary, fontWeight: '500', marginLeft: SPACING.xxs },
+  emptyState: { alignItems: 'center', paddingVertical: SPACING.xxl },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: theme.text, marginTop: SPACING.md },
 });
 
 const MainNavigator = () => {
@@ -276,7 +396,12 @@ const MainNavigator = () => {
         headerStyle: { backgroundColor: theme.card },
         headerTintColor: theme.text,
         headerTitleStyle: { fontWeight: 'bold' },
-        headerRight: () => <CartIcon />,
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <NotificationBell />
+            <CartIcon />
+          </View>
+        ),
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {

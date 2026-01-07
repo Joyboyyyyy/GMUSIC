@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -18,6 +17,8 @@ import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import ProtectedScreen from '../components/ProtectedScreen';
+import { Text, Card, Container, Row, Spacer } from '../components/ui';
+import { SPACING, COMPONENT_SIZES, RADIUS, SHADOWS } from '../theme/designSystem';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,7 +40,7 @@ const ProfileScreen = () => {
     { icon: 'person-outline', title: 'Edit Profile', subtitle: 'Update your personal information', onPress: () => navigation.navigate('EditProfile') },
     { icon: 'library-outline', title: 'My Library', subtitle: 'View your purchased lessons', onPress: () => navigation.navigate('Library') },
     { icon: 'card-outline', title: 'Payment Methods', subtitle: 'Manage your payment options', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
-    { icon: 'notifications-outline', title: 'Notifications', subtitle: 'Manage notification preferences', onPress: () => navigation.navigate('NotificationSettings') },
+    { icon: 'notifications-outline', title: 'Notifications', subtitle: 'View your notifications', onPress: () => navigation.navigate('Notifications') },
     { icon: 'shield-checkmark-outline', title: 'Privacy & Security', subtitle: 'Manage your privacy settings', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
     { icon: 'lock-closed-outline', title: 'Change Password', subtitle: 'Update your account password', onPress: () => navigation.navigate('ChangePassword') },
     { icon: 'help-circle-outline', title: 'Help & Support', subtitle: 'Get help or contact support', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
@@ -56,72 +57,76 @@ const ProfileScreen = () => {
           {/* Profile Header */}
           <View style={styles.header}>
             <Image source={{ uri: user?.profilePicture || user?.avatar || 'https://i.pravatar.cc/300' }} style={styles.avatar} />
-            <Text style={styles.name}>{user?.name}</Text>
-            <Text style={styles.email}>{user?.email}</Text>
+            <Text variant="h3" style={{ color: theme.text, marginBottom: SPACING.xxs }}>{user?.name}</Text>
+            <Text variant="body" style={{ color: theme.textSecondary }}>{user?.email}</Text>
           </View>
 
           {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{purchasedPacks.length}</Text>
-              <Text style={styles.statLabel}>Packs</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{Math.floor(purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60)}</Text>
-              <Text style={styles.statLabel}>Hours</Text>
-            </View>
-          </View>
+          <Card style={styles.statsContainer} elevation="sm">
+            <Row style={{ justifyContent: 'space-around' }}>
+              <View style={styles.statItem}>
+                <Text variant="h3" style={{ color: theme.primary }}>{purchasedPacks.length}</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary }}>Packs</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text variant="h3" style={{ color: theme.primary }}>0</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary }}>Completed</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text variant="h3" style={{ color: theme.primary }}>{Math.floor(purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60)}</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary }}>Hours</Text>
+              </View>
+            </Row>
+          </Card>
 
           {/* Dark Mode Toggle */}
-          <View style={styles.themeContainer}>
-            <View style={styles.themeLeft}>
-              <View style={styles.iconContainer}>
-                <Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={theme.primary} />
-              </View>
-              <View style={styles.menuTextContainer}>
-                <Text style={styles.menuTitle}>Dark Mode</Text>
-                <Text style={styles.menuSubtitle}>{isDark ? 'Dark theme enabled' : 'Light theme enabled'}</Text>
-              </View>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor={isDark ? '#fff' : '#f4f3f4'}
-            />
-          </View>
+          <Card style={styles.themeContainer} elevation="sm">
+            <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <Row style={{ alignItems: 'center', flex: 1 }}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name={isDark ? 'moon' : 'sunny'} size={COMPONENT_SIZES.icon.sm} color={theme.primary} />
+                </View>
+                <View style={styles.menuTextContainer}>
+                  <Text variant="label" style={{ color: theme.text }}>Dark Mode</Text>
+                  <Text variant="caption" style={{ color: theme.textMuted }}>{isDark ? 'Dark theme enabled' : 'Light theme enabled'}</Text>
+                </View>
+              </Row>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: theme.border, true: theme.primary }}
+                thumbColor={isDark ? '#fff' : '#f4f3f4'}
+              />
+            </Row>
+          </Card>
 
           {/* Menu Items */}
-          <View style={styles.menuContainer}>
+          <Card style={styles.menuContainer} elevation="sm" noPadding>
             {menuItems.map((item, index) => (
               <TouchableOpacity key={index} style={styles.menuItem} onPress={item.onPress}>
-                <View style={styles.menuLeft}>
+                <Row style={{ alignItems: 'center', flex: 1 }}>
                   <View style={styles.iconContainer}>
-                    <Ionicons name={item.icon as any} size={22} color={theme.primary} />
+                    <Ionicons name={item.icon as any} size={COMPONENT_SIZES.icon.sm} color={theme.primary} />
                   </View>
                   <View style={styles.menuTextContainer}>
-                    <Text style={styles.menuTitle}>{item.title}</Text>
-                    <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                    <Text variant="label" style={{ color: theme.text }}>{item.title}</Text>
+                    <Text variant="caption" style={{ color: theme.textMuted }}>{item.subtitle}</Text>
                   </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+                </Row>
+                <Ionicons name="chevron-forward" size={COMPONENT_SIZES.icon.sm} color={theme.textMuted} />
               </TouchableOpacity>
             ))}
-          </View>
+          </Card>
 
           {/* Logout Button */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color={theme.error} />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Ionicons name="log-out-outline" size={COMPONENT_SIZES.icon.sm} color={theme.error} />
+            <Text variant="label" style={{ color: theme.error }}>Logout</Text>
           </TouchableOpacity>
 
-          <View style={{ height: 40 }} />
+          <Spacer size="xl" />
         </ScrollView>
       </SafeAreaView>
     </ProtectedScreen>
@@ -130,26 +135,17 @@ const ProfileScreen = () => {
 
 const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
-  header: { alignItems: 'center', paddingVertical: 32, backgroundColor: theme.card, marginBottom: 16 },
-  avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 16, borderWidth: 3, borderColor: theme.primary },
-  name: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
-  email: { fontSize: 14, color: theme.textSecondary },
-  statsContainer: { flexDirection: 'row', backgroundColor: theme.card, marginHorizontal: 20, marginBottom: 16, padding: 20, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  header: { alignItems: 'center', paddingVertical: SPACING.xl, backgroundColor: theme.card, marginBottom: SPACING.md },
+  avatar: { width: COMPONENT_SIZES.avatar.xxl, height: COMPONENT_SIZES.avatar.xxl, borderRadius: COMPONENT_SIZES.avatar.xxl / 2, marginBottom: SPACING.md, borderWidth: 3, borderColor: theme.primary },
+  statsContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: SPACING.screenPadding },
   statItem: { flex: 1, alignItems: 'center' },
   divider: { width: 1, backgroundColor: theme.border },
-  statValue: { fontSize: 24, fontWeight: 'bold', color: theme.primary, marginBottom: 4 },
-  statLabel: { fontSize: 13, color: theme.textSecondary },
-  themeContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.card, marginHorizontal: 20, marginBottom: 16, padding: 16, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  themeLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  menuContainer: { backgroundColor: theme.card, marginHorizontal: 20, borderRadius: 12, overflow: 'hidden', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border },
-  menuLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconContainer: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  themeContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: SPACING.md },
+  menuContainer: { marginHorizontal: SPACING.screenPadding, borderRadius: RADIUS.md, overflow: 'hidden', marginBottom: SPACING.md },
+  menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: theme.border },
+  iconContainer: { width: COMPONENT_SIZES.touchTarget.md, height: COMPONENT_SIZES.touchTarget.md, borderRadius: COMPONENT_SIZES.touchTarget.md / 2, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },
   menuTextContainer: { flex: 1 },
-  menuTitle: { fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 4 },
-  menuSubtitle: { fontSize: 13, color: theme.textMuted },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, marginHorizontal: 20, padding: 18, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: theme.error },
-  logoutText: { fontSize: 16, fontWeight: '600', color: theme.error },
+  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, marginHorizontal: SPACING.screenPadding, padding: SPACING.lg, borderRadius: RADIUS.md, gap: SPACING.xs, borderWidth: 1, borderColor: theme.error },
 });
 
 export default ProfileScreen;
