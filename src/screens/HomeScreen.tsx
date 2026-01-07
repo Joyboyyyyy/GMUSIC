@@ -21,6 +21,8 @@ import { mockTeachers } from '../data/mockData';
 import PackCard from '../components/PackCard';
 import FloatingCartBar from '../components/FloatingCartBar';
 import { TestimonialsMarquee } from '../components/TestimonialsMarquee';
+import NotificationBell from '../components/NotificationBell';
+import CartIcon from '../components/CartIcon';
 import { useAuthStore } from '../store/authStore';
 import { useCourseStore } from '../store/courseStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
@@ -150,12 +152,8 @@ const HomeScreen = () => {
             <Text style={styles.subtitle}>What do you want to learn today?</Text>
           </View>
           <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('Coming Soon', 'Map feature is under development. Stay tuned!', [{ text: 'OK' }])}>
-              <Ionicons name="map-outline" size={24} color={theme.text} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
-              <Ionicons name="notifications-outline" size={24} color={theme.text} />
-            </TouchableOpacity>
+            <NotificationBell />
+            <CartIcon />
           </View>
         </View>
 

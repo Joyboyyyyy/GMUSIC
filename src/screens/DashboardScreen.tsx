@@ -21,6 +21,8 @@ import { useCourseStore } from '../store/courseStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import PackCard from '../components/PackCard';
 import ProtectedScreen from '../components/ProtectedScreen';
+import NotificationBell from '../components/NotificationBell';
+import CartIcon from '../components/CartIcon';
 import { Text, Card } from '../components/ui';
 import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
 
@@ -80,18 +82,22 @@ const DashboardScreen = () => {
               <Text variant="h2" style={{ color: theme.text }}>Hello, {user?.name || 'Student'}! 👋</Text>
               <Text variant="body" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>Ready to learn today?</Text>
             </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <NotificationBell />
+              <CartIcon />
+            </View>
           </View>
 
-          {/* Book a Room Shortcut */}
+          {/* Jamming Room Shortcut */}
           <View style={styles.section}>
             <Card style={styles.bookRoomCard} onPress={() => navigation.navigate('Main', { screen: 'BookRoom' })} elevation="sm">
               <View style={styles.bookRoomContent}>
                 <View style={styles.bookRoomIcon}>
-                  <Ionicons name="calendar-outline" size={COMPONENT_SIZES.icon.lg} color={theme.primary} />
+                  <Ionicons name="musical-notes-outline" size={COMPONENT_SIZES.icon.lg} color={theme.primary} />
                 </View>
                 <View style={styles.bookRoomText}>
-                  <Text variant="h4" style={{ color: theme.text, marginBottom: SPACING.xxs }}>Book a Room</Text>
-                  <Text variant="bodySmall" style={{ color: theme.textSecondary }}>Reserve a practice room for your sessions</Text>
+                  <Text variant="h4" style={{ color: theme.text, marginBottom: SPACING.xxs }}>Jamming Room</Text>
+                  <Text variant="bodySmall" style={{ color: theme.textSecondary }}>Reserve a jamming room for your sessions</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={COMPONENT_SIZES.icon.md} color={theme.textMuted} />
               </View>

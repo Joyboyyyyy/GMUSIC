@@ -23,8 +23,8 @@ const BookRoomScreen = () => {
       <SafeAreaView style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <Text style={styles.title}>Book a Room</Text>
-            <Text style={styles.subtitle}>Reserve a practice room for your music sessions</Text>
+            <Text style={styles.title}>Jamming Room</Text>
+            <Text style={styles.subtitle}>Reserve a jamming room for your music sessions</Text>
           </View>
 
           <View style={styles.featuresContainer}>

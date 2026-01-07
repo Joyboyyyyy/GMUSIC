@@ -17,6 +17,8 @@ import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import ProtectedScreen from '../components/ProtectedScreen';
+import NotificationBell from '../components/NotificationBell';
+import CartIcon from '../components/CartIcon';
 import { Text, Card, Container, Row, Spacer } from '../components/ui';
 import { SPACING, COMPONENT_SIZES, RADIUS, SHADOWS } from '../theme/designSystem';
 
@@ -56,9 +58,15 @@ const ProfileScreen = () => {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Profile Header */}
           <View style={styles.header}>
-            <Image source={{ uri: user?.profilePicture || user?.avatar || 'https://i.pravatar.cc/300' }} style={styles.avatar} />
-            <Text variant="h3" style={{ color: theme.text, marginBottom: SPACING.xxs }}>{user?.name}</Text>
-            <Text variant="body" style={{ color: theme.textSecondary }}>{user?.email}</Text>
+            <View style={styles.headerContent}>
+              <Image source={{ uri: user?.profilePicture || user?.avatar || 'https://i.pravatar.cc/300' }} style={styles.avatar} />
+              <Text variant="h3" style={{ color: theme.text, marginBottom: SPACING.xxs }}>{user?.name}</Text>
+              <Text variant="body" style={{ color: theme.textSecondary }}>{user?.email}</Text>
+            </View>
+            <View style={styles.headerIcons}>
+              <NotificationBell />
+              <CartIcon />
+            </View>
           </View>
 
           {/* Stats */}
@@ -135,7 +143,9 @@ const ProfileScreen = () => {
 
 const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
-  header: { alignItems: 'center', paddingVertical: SPACING.xl, backgroundColor: theme.card, marginBottom: SPACING.md },
+  header: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.screenPadding, backgroundColor: theme.card, marginBottom: SPACING.md },
+  headerContent: { alignItems: 'center', flex: 1 },
+  headerIcons: { position: 'absolute', top: SPACING.md, right: SPACING.screenPadding, flexDirection: 'row', alignItems: 'center' },
   avatar: { width: COMPONENT_SIZES.avatar.xxl, height: COMPONENT_SIZES.avatar.xxl, borderRadius: COMPONENT_SIZES.avatar.xxl / 2, marginBottom: SPACING.md, borderWidth: 3, borderColor: theme.primary },
   statsContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: SPACING.screenPadding },
   statItem: { flex: 1, alignItems: 'center' },

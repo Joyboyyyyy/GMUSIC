@@ -105,8 +105,14 @@ const NearbyBuildingsScreen: React.FC = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Nearby Buildings</Text>
-          <Text style={styles.headerSubtitle}>Find music buildings near you</Text>
+          <View>
+            <Text style={styles.headerTitle}>Nearby Buildings</Text>
+            <Text style={styles.headerSubtitle}>Find music buildings near you</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <NotificationBell />
+            <CartIcon />
+          </View>
         </View>
 
         <View style={styles.mapSection}>
@@ -280,7 +286,7 @@ const createNearbyStyles = (theme: Theme, isDark: boolean) => StyleSheet.create(
   container: { flex: 1, backgroundColor: theme.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: SPACING.sm, fontSize: 14, color: theme.textSecondary },
-  header: { paddingHorizontal: SPACING.screenPadding, paddingTop: SPACING.xs, paddingBottom: SPACING.md },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.screenPadding, paddingTop: SPACING.xs, paddingBottom: SPACING.md },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: theme.text },
   headerSubtitle: { fontSize: 14, color: theme.textSecondary, marginTop: SPACING.xxs },
   mapSection: { paddingHorizontal: SPACING.md, marginBottom: SPACING.lg },
@@ -392,16 +398,7 @@ const MainNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: theme.card },
-        headerTintColor: theme.text,
-        headerTitleStyle: { fontWeight: 'bold' },
-        headerRight: () => (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <NotificationBell />
-            <CartIcon />
-          </View>
-        ),
+        headerShown: false, // Hide top header for all tabs
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
@@ -416,9 +413,9 @@ const MainNavigator = () => {
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }} />
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />, headerRight: () => null }} />
-      <Tab.Screen name="Nearby" component={NearbyBuildingsScreen} options={{ title: 'Nearby Buildings', tabBarIcon: ({ color, size }) => <Ionicons name="location" size={size} color={color} /> }} />
-      <Tab.Screen name="BookRoom" component={BookRoomScreen} options={{ title: 'Book a Room', tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} /> }} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} /> }} />
+      <Tab.Screen name="Nearby" component={NearbyBuildingsScreen} options={{ title: 'Nearby Buildi...', tabBarIcon: ({ color, size }) => <Ionicons name="location" size={size} color={color} /> }} />
+      <Tab.Screen name="BookRoom" component={BookRoomScreen} options={{ title: 'Jamming Room', tabBarIcon: ({ color, size }) => <Ionicons name="musical-notes-outline" size={size} color={color} /> }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }} />
     </Tab.Navigator>
   );
