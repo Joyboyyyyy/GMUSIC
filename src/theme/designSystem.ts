@@ -1,23 +1,6 @@
-import { Dimensions, PixelRatio, Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// ============================================
-// DEVICE BREAKPOINTS
-// ============================================
-export const BREAKPOINTS = {
-  smallPhone: 320,   // iPhone SE, small Android
-  phone: 375,        // iPhone 12/13/14
-  largePhone: 414,   // iPhone Plus/Max
-  tablet: 768,       // iPad Mini
-} as const;
-
-export const getDeviceType = (): 'smallPhone' | 'phone' | 'largePhone' | 'tablet' => {
-  if (SCREEN_WIDTH >= BREAKPOINTS.tablet) return 'tablet';
-  if (SCREEN_WIDTH >= BREAKPOINTS.largePhone) return 'largePhone';
-  if (SCREEN_WIDTH >= BREAKPOINTS.phone) return 'phone';
-  return 'smallPhone';
-};
 
 // ============================================
 // 4-COLUMN GRID SYSTEM
@@ -46,7 +29,7 @@ export const GRID = {
 } as const;
 
 // ============================================
-// 8DP SPACING SYSTEM
+// 8DP SPACING SYSTEM (Fixed values)
 // ============================================
 export const SPACING = {
   base: 8,
@@ -73,32 +56,8 @@ export const SPACING = {
 
 
 // ============================================
-// SCALABLE TYPOGRAPHY
+// TYPOGRAPHY (Fixed pixel values)
 // ============================================
-const fontScale = PixelRatio.getFontScale();
-const pixelRatio = PixelRatio.get();
-
-// Normalize font size based on screen width and pixel density
-const normalize = (size: number): number => {
-  const scale = SCREEN_WIDTH / 375; // Base on iPhone 12/13 width
-  const newSize = size * scale;
-  
-  if (Platform.OS === 'ios') {
-    return Math.round(PixelRatio.roundToNearestPixel(newSize));
-  }
-  return Math.round(PixelRatio.roundToNearestPixel(newSize)) - 2;
-};
-
-// Responsive font size that respects user's accessibility settings
-const scaledFontSize = (size: number): number => {
-  const scaled = normalize(size);
-  // Clamp to prevent extreme scaling
-  const minScale = 0.85;
-  const maxScale = 1.3;
-  const clampedScale = Math.min(Math.max(fontScale, minScale), maxScale);
-  return Math.round(scaled * clampedScale);
-};
-
 export const TYPOGRAPHY = {
   // Font families
   fontFamily: {
@@ -108,18 +67,18 @@ export const TYPOGRAPHY = {
     bold: Platform.select({ ios: 'System', android: 'Roboto-Bold' }),
   },
   
-  // Font sizes (scalable)
+  // Font sizes (fixed pixels)
   fontSize: {
-    xs: scaledFontSize(10),     // Caption small
-    sm: scaledFontSize(12),     // Caption
-    base: scaledFontSize(14),   // Body small
-    md: scaledFontSize(16),     // Body
-    lg: scaledFontSize(18),     // Body large
-    xl: scaledFontSize(20),     // Heading 4
-    '2xl': scaledFontSize(24),  // Heading 3
-    '3xl': scaledFontSize(28),  // Heading 2
-    '4xl': scaledFontSize(32),  // Heading 1
-    '5xl': scaledFontSize(40),  // Display
+    xs: 10,     // Caption small
+    sm: 12,     // Caption
+    base: 14,   // Body small
+    md: 16,     // Body
+    lg: 18,     // Body large
+    xl: 20,     // Heading 4
+    '2xl': 24,  // Heading 3
+    '3xl': 28,  // Heading 2
+    '4xl': 32,  // Heading 1
+    '5xl': 40,  // Display
   },
   
   // Line heights (1.4-1.6 ratio for readability)
@@ -147,85 +106,85 @@ export const TYPOGRAPHY = {
   },
 } as const;
 
-// Pre-defined text styles
+// Pre-defined text styles (fixed pixels)
 export const TEXT_STYLES = {
   // Display
   displayLarge: {
-    fontSize: TYPOGRAPHY.fontSize['5xl'],
+    fontSize: 40,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
-    lineHeight: TYPOGRAPHY.fontSize['5xl'] * TYPOGRAPHY.lineHeight.tight,
+    lineHeight: 48,
     letterSpacing: TYPOGRAPHY.letterSpacing.tight,
   },
   
   // Headings
   h1: {
-    fontSize: TYPOGRAPHY.fontSize['4xl'],
+    fontSize: 32,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
-    lineHeight: TYPOGRAPHY.fontSize['4xl'] * TYPOGRAPHY.lineHeight.tight,
+    lineHeight: 38,
   },
   h2: {
-    fontSize: TYPOGRAPHY.fontSize['3xl'],
+    fontSize: 28,
     fontWeight: TYPOGRAPHY.fontWeight.bold,
-    lineHeight: TYPOGRAPHY.fontSize['3xl'] * TYPOGRAPHY.lineHeight.tight,
+    lineHeight: 34,
   },
   h3: {
-    fontSize: TYPOGRAPHY.fontSize['2xl'],
+    fontSize: 24,
     fontWeight: TYPOGRAPHY.fontWeight.semiBold,
-    lineHeight: TYPOGRAPHY.fontSize['2xl'] * TYPOGRAPHY.lineHeight.normal,
+    lineHeight: 30,
   },
   h4: {
-    fontSize: TYPOGRAPHY.fontSize.xl,
+    fontSize: 20,
     fontWeight: TYPOGRAPHY.fontWeight.semiBold,
-    lineHeight: TYPOGRAPHY.fontSize.xl * TYPOGRAPHY.lineHeight.normal,
+    lineHeight: 26,
   },
   
   // Body
   bodyLarge: {
-    fontSize: TYPOGRAPHY.fontSize.lg,
+    fontSize: 18,
     fontWeight: TYPOGRAPHY.fontWeight.regular,
-    lineHeight: TYPOGRAPHY.fontSize.lg * TYPOGRAPHY.lineHeight.relaxed,
+    lineHeight: 26,
   },
   body: {
-    fontSize: TYPOGRAPHY.fontSize.md,
+    fontSize: 16,
     fontWeight: TYPOGRAPHY.fontWeight.regular,
-    lineHeight: TYPOGRAPHY.fontSize.md * TYPOGRAPHY.lineHeight.relaxed,
+    lineHeight: 24,
   },
   bodySmall: {
-    fontSize: TYPOGRAPHY.fontSize.base,
+    fontSize: 14,
     fontWeight: TYPOGRAPHY.fontWeight.regular,
-    lineHeight: TYPOGRAPHY.fontSize.base * TYPOGRAPHY.lineHeight.relaxed,
+    lineHeight: 20,
   },
   
   // Labels & Captions
   label: {
-    fontSize: TYPOGRAPHY.fontSize.base,
+    fontSize: 14,
     fontWeight: TYPOGRAPHY.fontWeight.medium,
-    lineHeight: TYPOGRAPHY.fontSize.base * TYPOGRAPHY.lineHeight.normal,
+    lineHeight: 18,
   },
   caption: {
-    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontSize: 12,
     fontWeight: TYPOGRAPHY.fontWeight.regular,
-    lineHeight: TYPOGRAPHY.fontSize.sm * TYPOGRAPHY.lineHeight.normal,
+    lineHeight: 16,
   },
   captionSmall: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontSize: 10,
     fontWeight: TYPOGRAPHY.fontWeight.regular,
-    lineHeight: TYPOGRAPHY.fontSize.xs * TYPOGRAPHY.lineHeight.normal,
+    lineHeight: 14,
   },
   
   // Buttons
   buttonLarge: {
-    fontSize: TYPOGRAPHY.fontSize.md,
+    fontSize: 16,
     fontWeight: TYPOGRAPHY.fontWeight.semiBold,
     letterSpacing: TYPOGRAPHY.letterSpacing.wide,
   },
   button: {
-    fontSize: TYPOGRAPHY.fontSize.base,
+    fontSize: 14,
     fontWeight: TYPOGRAPHY.fontWeight.semiBold,
     letterSpacing: TYPOGRAPHY.letterSpacing.wide,
   },
   buttonSmall: {
-    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontSize: 12,
     fontWeight: TYPOGRAPHY.fontWeight.semiBold,
     letterSpacing: TYPOGRAPHY.letterSpacing.wide,
   },
@@ -233,7 +192,7 @@ export const TEXT_STYLES = {
 
 
 // ============================================
-// ADAPTIVE COMPONENT SIZES
+// COMPONENT SIZES (Fixed pixels)
 // ============================================
 export const COMPONENT_SIZES = {
   // Touch targets (minimum 44pt for accessibility)
@@ -289,7 +248,7 @@ export const COMPONENT_SIZES = {
     },
   },
   
-  // Icons
+  // Icons (fixed pixels)
   icon: {
     xs: 16,
     sm: 20,
@@ -298,7 +257,7 @@ export const COMPONENT_SIZES = {
     xl: 48,
   },
   
-  // Avatars
+  // Avatars (fixed pixels)
   avatar: {
     xs: 24,
     sm: 32,
@@ -317,7 +276,7 @@ export const COMPONENT_SIZES = {
 } as const;
 
 // ============================================
-// BORDER RADIUS SYSTEM
+// BORDER RADIUS SYSTEM (Fixed pixels)
 // ============================================
 export const RADIUS = {
   none: 0,
@@ -372,39 +331,6 @@ export const SHADOWS = {
 } as const;
 
 // ============================================
-// RESPONSIVE HELPERS
-// ============================================
-export const responsive = {
-  // Get value based on device type
-  value: <T>(values: { smallPhone?: T; phone?: T; largePhone?: T; tablet?: T; default: T }): T => {
-    const device = getDeviceType();
-    return values[device] ?? values.default;
-  },
-  
-  // Scale value based on screen width
-  scale: (value: number, factor: number = 1): number => {
-    const scale = SCREEN_WIDTH / 375;
-    return Math.round(value * scale * factor);
-  },
-  
-  // Percentage of screen width
-  wp: (percentage: number): number => {
-    return Math.round((percentage / 100) * SCREEN_WIDTH);
-  },
-  
-  // Percentage of screen height
-  hp: (percentage: number): number => {
-    return Math.round((percentage / 100) * SCREEN_HEIGHT);
-  },
-  
-  // Check if small screen
-  isSmallScreen: (): boolean => SCREEN_WIDTH < BREAKPOINTS.phone,
-  
-  // Check if large screen
-  isLargeScreen: (): boolean => SCREEN_WIDTH >= BREAKPOINTS.largePhone,
-};
-
-// ============================================
 // ANIMATION DURATIONS
 // ============================================
 export const ANIMATION = {
@@ -425,6 +351,4 @@ export const ANIMATION = {
 export const SCREEN = {
   width: SCREEN_WIDTH,
   height: SCREEN_HEIGHT,
-  pixelRatio,
-  fontScale,
 } as const;

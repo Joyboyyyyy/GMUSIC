@@ -1,7 +1,7 @@
 # Design System Guidelines
 
 ## Overview
-This app follows a systemized mobile UI with a 4-column grid, 8dp spacing system, scalable typography, and adaptive components.
+This app follows a systemized mobile UI with a 4-column grid, 8dp spacing system, fixed typography, and consistent components.
 
 ## 4-Column Grid System
 - **Columns**: 4
@@ -21,62 +21,57 @@ All spacing uses multiples of 8dp:
 - `xxl`: 48dp (6x)
 - `xxxl`: 64dp (8x)
 
-## Typography Scale
-Scalable font sizes that adapt to screen size and user accessibility settings:
-- `xs`: 10dp - Caption small
-- `sm`: 12dp - Caption
-- `base`: 14dp - Body small
-- `md`: 16dp - Body
-- `lg`: 18dp - Body large
-- `xl`: 20dp - Heading 4
-- `2xl`: 24dp - Heading 3
-- `3xl`: 28dp - Heading 2
-- `4xl`: 32dp - Heading 1
-- `5xl`: 40dp - Display
+## Typography Scale (Fixed Pixels)
+- `xs`: 10px - Caption small
+- `sm`: 12px - Caption
+- `base`: 14px - Body small
+- `md`: 16px - Body
+- `lg`: 18px - Body large
+- `xl`: 20px - Heading 4
+- `2xl`: 24px - Heading 3
+- `3xl`: 28px - Heading 2
+- `4xl`: 32px - Heading 1
+- `5xl`: 40px - Display
 
-## Component Sizes
+## Component Sizes (Fixed Pixels)
 ### Buttons
-- Small: 36dp height
-- Medium: 44dp height (default)
-- Large: 52dp height
+- Small: 36px height
+- Medium: 44px height (default)
+- Large: 52px height
 
 ### Inputs
-- Small: 40dp height
-- Medium: 48dp height (default)
-- Large: 56dp height
+- Small: 40px height
+- Medium: 48px height (default)
+- Large: 56px height
 
 ### Touch Targets
-- Minimum: 44dp (accessibility requirement)
+- Minimum: 44px (accessibility requirement)
 
-## Border Radius
-- `xs`: 4dp
-- `sm`: 8dp
-- `md`: 12dp (default for cards)
-- `lg`: 16dp
-- `xl`: 20dp
-- `full`: 999dp (pills)
+### Icons
+- xs: 16px
+- sm: 20px
+- md: 24px
+- lg: 32px
+- xl: 48px
+
+### Avatars
+- xs: 24px
+- sm: 32px
+- md: 40px
+- lg: 56px
+- xl: 80px
+- xxl: 120px
+
+## Border Radius (Fixed Pixels)
+- `xs`: 4px
+- `sm`: 8px
+- `md`: 12px (default for cards)
+- `lg`: 16px
+- `xl`: 20px
+- `full`: 999px (pills)
 
 ## Usage
 ```tsx
-import { SPACING, GRID, TYPOGRAPHY, COMPONENT_SIZES } from '../theme/designSystem';
+import { SPACING, GRID, TYPOGRAPHY, COMPONENT_SIZES, RADIUS, SHADOWS } from '../theme/designSystem';
 import { Button, Card, Text, Input, Container, Row, Spacer } from '../components/ui';
-```
-
-## Responsive Helpers
-```tsx
-import { responsive } from '../theme/designSystem';
-
-// Get value based on device type
-const padding = responsive.value({
-  smallPhone: 12,
-  phone: 16,
-  largePhone: 20,
-  default: 16,
-});
-
-// Scale value based on screen width
-const iconSize = responsive.scale(24);
-
-// Percentage of screen
-const width = responsive.wp(50); // 50% of screen width
 ```
