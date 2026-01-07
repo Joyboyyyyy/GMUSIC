@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/types';
 import ProtectedScreen from '../../components/ProtectedScreen';
+import { useThemeStore, getTheme, Theme } from '../../store/themeStore';
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, 'Chat'>;
 
@@ -28,6 +29,9 @@ const ChatScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<ChatScreenRouteProp>();
   const { mentorName, packTitle } = route.params;
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme, isDark);
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -97,14 +101,14 @@ const ChatScreen = () => {
         {/* Header */}
         <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1f2937" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>{mentorName}</Text>
           <Text style={styles.headerSubtitle}>{packTitle}</Text>
         </View>
         <View style={styles.mentorAvatar}>
-          <Ionicons name="person" size={24} color="#7c3aed" />
+          <Ionicons name="person" size={24} color={theme.primary} />
         </View>
       </View>
 
@@ -127,7 +131,7 @@ const ChatScreen = () => {
           <TextInput
             style={styles.input}
             placeholder="Type your message..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={theme.textMuted}
             value={inputText}
             onChangeText={setInputText}
             multiline
@@ -147,19 +151,19 @@ const ChatScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: theme.border,
     gap: 12,
   },
   backButton: {
@@ -171,18 +175,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: theme.text,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   mentorAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f3e8ff',
+    backgroundColor: theme.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -206,14 +210,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   userBubble: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: theme.primary,
     borderBottomRightRadius: 4,
   },
   mentorBubble: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.border,
   },
   messageText: {
     fontSize: 15,
@@ -223,7 +227,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   mentorText: {
-    color: '#1f2937',
+    color: theme.text,
   },
   timestamp: {
     fontSize: 11,
@@ -234,36 +238,36 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   mentorTimestamp: {
-    color: '#9ca3af',
+    color: theme.textMuted,
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: theme.border,
     gap: 12,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.inputBackground,
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
     maxHeight: 100,
-    color: '#1f2937',
+    color: theme.text,
   },
   sendButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#7c3aed',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#d1d5db',
+    backgroundColor: theme.textMuted,
   },
 });
 

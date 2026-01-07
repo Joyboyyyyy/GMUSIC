@@ -19,9 +19,10 @@ export const createRazorpayOrder = async ({ userId, courseId }) => {
   }
   
   // Check for obviously invalid IDs (numeric strings like "1", "2", etc.)
+  // These are mock data IDs - return a helpful error message
   if (/^\d+$/.test(courseId)) {
-    console.error(`[Razorpay Service] Numeric courseId rejected: ${courseId}`);
-    throw new Error(`Invalid courseId format. Received numeric ID: ${courseId}. Expected UUID format.`);
+    console.error(`[Razorpay Service] Numeric courseId rejected: ${courseId} - This appears to be mock data`);
+    throw new Error(`This is a demo course (ID: ${courseId}). Real payment requires a course from the database. Please use the test mode in the app.`);
   }
   
   const razorpay = getRazorpay();
@@ -46,21 +47,24 @@ export const createRazorpayOrder = async ({ userId, courseId }) => {
     console.error(`[Razorpay Service] Course not found in database: ${courseId}`);
     throw new Error(`Course not found. courseId: ${courseId}. Please ensure the course exists in the database.`);
   }
-  console.log(`[Razorpay Service] Course found: ${course.id}, title: ${course.title}, price: ${course.price}`);
+  
+  // Use pricePerSlot as the price field (database schema uses pricePerSlot, not price)
+  const coursePrice = course.pricePerSlot || course.price;
+  console.log(`[Razorpay Service] Course found: ${course.id}, name: ${course.name}, pricePerSlot: ${course.pricePerSlot}`);
   
   // Validate course price from database (NEVER trust frontend price)
-  if (!course.price || typeof course.price !== 'number' || course.price <= 0) {
-    console.error(`[Razorpay Service] Invalid course price in database: ${course.price} for courseId: ${courseId}`);
-    throw new Error(`Invalid course price: ${course.price}. Price must be a positive number.`);
+  if (!coursePrice || typeof coursePrice !== 'number' || coursePrice <= 0) {
+    console.error(`[Razorpay Service] Invalid course price in database: ${coursePrice} for courseId: ${courseId}`);
+    throw new Error(`Invalid course price: ${coursePrice}. Price must be a positive number.`);
   }
 
   // ===== COMPUTE AMOUNT FROM DATABASE ONLY =====
   // Amount in paise (1 INR = 100 paise)
-  const amount = Math.round(course.price * 100);
-  console.log(`[Razorpay Service] Computed amount: ${amount} paise (₹${course.price})`);
+  const amount = Math.round(coursePrice * 100);
+  console.log(`[Razorpay Service] Computed amount: ${amount} paise (₹${coursePrice})`);
 
   if (amount < 100) {
-    throw new Error(`Amount too small: ₹${course.price}. Minimum is ₹1.`);
+    throw new Error(`Amount too small: ₹${coursePrice}. Minimum is ₹1.`);
   }
 
   // ===== CREATE RAZORPAY ORDER =====
@@ -76,7 +80,7 @@ export const createRazorpayOrder = async ({ userId, courseId }) => {
       notes: { 
         userId: user.id, 
         courseId: course.id,
-        courseTitle: course.title,
+        courseTitle: course.name,
         userEmail: user.email
       },
     });
@@ -89,30 +93,34 @@ export const createRazorpayOrder = async ({ userId, courseId }) => {
     throw new Error(razorpayError.error?.description || razorpayError.message || "Failed to create Razorpay order");
   }
 
-  // ===== CREATE ENROLLMENT RECORD =====
-  console.log(`[Razorpay Service] Creating enrollment record...`);
-  const enrollment = await db.enrollment.create({
+  // ===== CREATE PAYMENT RECORD =====
+  console.log(`[Razorpay Service] Creating payment record...`);
+  const payment = await db.payment.create({
     data: { 
-      userId: user.id, 
-      courseId: course.id, 
-      status: "pending" 
+      studentId: user.id, 
+      amount: coursePrice,
+      currency: 'INR',
+      status: 'PENDING',
+      gatewayOrderId: order.id,
+      slotIds: [], // Will be populated when slots are booked
     },
   });
-  console.log(`[Razorpay Service] Enrollment created: ${enrollment.id}`);
+  console.log(`[Razorpay Service] Payment created: ${payment.id}`);
 
   // ===== RETURN RESPONSE =====
   const response = {
     key: process.env.RAZORPAY_KEY_ID,
     order,
-    enrollmentId: enrollment.id,
+    enrollmentId: payment.id, // Using payment ID as enrollment ID for backward compatibility
+    paymentId: payment.id,
     course: {
       id: course.id,
-      title: course.title,
-      price: course.price,
+      title: course.name,
+      price: coursePrice,
     }
   };
 
-  console.log(`[Razorpay Service] Order creation successful - orderId: ${order.id}, enrollmentId: ${enrollment.id}`);
+  console.log(`[Razorpay Service] Order creation successful - orderId: ${order.id}, paymentId: ${payment.id}`);
   return response;
 };
 
@@ -142,24 +150,103 @@ export const verifyRazorpayPayment = async ({
 
   console.log(`[Razorpay Service] Signature verified successfully. Updating enrollment...`);
 
-  // Find enrollment by enrollmentId if provided, otherwise find by order_id from Razorpay
-  let enrollment;
+  // Find payment by enrollmentId (which is actually paymentId) if provided
+  let payment;
   
   if (enrollmentId) {
-    // Update enrollment directly if enrollmentId is provided
-    enrollment = await db.enrollment.update({
+    // Update payment directly if enrollmentId (paymentId) is provided
+    payment = await db.payment.update({
       where: { id: enrollmentId },
-      data: { status: "paid", paymentId: razorpay_payment_id },
+      data: { 
+        status: 'COMPLETED', 
+        gatewayPaymentId: razorpay_payment_id,
+        gatewaySignature: razorpay_signature,
+        completedAt: new Date(),
+      },
     });
-    console.log(`[Razorpay Service] Enrollment updated: ${enrollment.id}`);
+    console.log(`[Razorpay Service] Payment updated: ${payment.id}`);
   } else {
-    // Try to find enrollment by looking up the Razorpay order
-    // This requires fetching order details from Razorpay to get userId/courseId from notes
-    // For now, if enrollmentId is missing, we'll need to return an error
-    throw new Error("enrollmentId is required to update enrollment status");
+    // Try to find payment by gatewayOrderId
+    payment = await db.payment.findFirst({
+      where: { gatewayOrderId: razorpay_order_id },
+    });
+    
+    if (payment) {
+      payment = await db.payment.update({
+        where: { id: payment.id },
+        data: { 
+          status: 'COMPLETED', 
+          gatewayPaymentId: razorpay_payment_id,
+          gatewaySignature: razorpay_signature,
+          completedAt: new Date(),
+        },
+      });
+      console.log(`[Razorpay Service] Payment found and updated: ${payment.id}`);
+    } else {
+      throw new Error("Payment record not found for this order");
+    }
   }
 
-  return { success: true, enrollment };
+  // Assign building to user if they don't have one yet
+  // Get the course from the Razorpay order notes
+  try {
+    const order = await razorpay.orders.fetch(razorpay_order_id);
+    const courseId = order.notes?.courseId;
+    const userId = order.notes?.userId || payment.studentId;
+    
+    if (courseId && userId) {
+      // Get course to find its building
+      const course = await db.course.findUnique({
+        where: { id: courseId },
+        select: { buildingId: true },
+      });
+      
+      if (course?.buildingId) {
+        // Check if user already has a building
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { buildingId: true },
+        });
+        
+        // If user doesn't have a building, assign the course's building
+        if (!user?.buildingId) {
+          await db.user.update({
+            where: { id: userId },
+            data: { 
+              buildingId: course.buildingId,
+              approvalStatus: 'ACTIVE', // Auto-approve since they purchased a course
+            },
+          });
+          console.log(`[Razorpay Service] Assigned building ${course.buildingId} to user ${userId}`);
+        }
+      }
+    }
+  } catch (buildingError) {
+    // Don't fail the payment verification if building assignment fails
+    console.error(`[Razorpay Service] Error assigning building to user:`, buildingError);
+  }
+
+  return { success: true, payment, enrollment: payment };
+};
+
+export const failRazorpayPayment = async ({ paymentId, reason }) => {
+  console.log(`[Razorpay Service] Marking payment as failed - paymentId: ${paymentId}, reason: ${reason}`);
+  
+  if (!paymentId) {
+    throw new Error('Payment ID is required');
+  }
+
+  const payment = await db.payment.update({
+    where: { id: paymentId },
+    data: { 
+      status: 'FAILED',
+      failedAt: new Date(),
+      failureReason: reason || 'User cancelled payment',
+    },
+  });
+
+  console.log(`[Razorpay Service] Payment marked as failed: ${payment.id}`);
+  return { success: true, payment };
 };
 
 export const handleRazorpayWebhook = async (req) => {
@@ -179,10 +266,14 @@ export const handleRazorpayWebhook = async (req) => {
   const event = JSON.parse(req.rawBody.toString());
 
   if (event.event === "payment.captured") {
-    const payment = event.payload.payment.entity;
-    await db.enrollment.updateMany({
-      where: { paymentId: null, status: "pending" },
-      data: { status: "paid", paymentId: payment.id },
+    const paymentEntity = event.payload.payment.entity;
+    await db.payment.updateMany({
+      where: { gatewayOrderId: paymentEntity.order_id, status: 'PENDING' },
+      data: { 
+        status: 'COMPLETED', 
+        gatewayPaymentId: paymentEntity.id,
+        completedAt: new Date(),
+      },
     });
   }
 };

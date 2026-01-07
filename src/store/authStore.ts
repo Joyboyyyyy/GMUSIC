@@ -20,7 +20,7 @@ interface AuthState {
   isLoggingOut: boolean; // Flag to track logout state
   login: (user: User, token: string) => Promise<void>;
   loginWithCredentials: (email: string, password: string) => Promise<{ user: User; token: string }>;
-  signup: (name: string, email: string, password: string, dateOfBirth?: string | null, address?: string | null) => Promise<{ email: string }>;
+  signup: (name: string, email: string, password: string, dateOfBirth?: string | null, address?: string | null, phone?: string | null, buildingCode?: string | null, proofDocument?: string | null, buildingId?: string | null) => Promise<{ email: string }>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<{ user: User }>;
   setUserFromBackend: (user: User) => void;
@@ -155,7 +155,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       }
     },
 
-    signup: async (name: string, email: string, password: string, dateOfBirth?: string | null, address?: string | null) => {
+    signup: async (name: string, email: string, password: string, dateOfBirth?: string | null, address?: string | null, phone?: string | null, buildingCode?: string | null, proofDocument?: string | null, buildingId?: string | null) => {
       set({ loading: true });
       try {
         console.log('[AuthStore] Starting signup for:', email);
@@ -163,8 +163,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
           name, 
           email, 
           password,
+          phone,
           dateOfBirth,
           address,
+          buildingCode,
+          buildingId, // New: direct building ID from search
+          proofDocument,
         });
         
         // Backend returns: { success: true, message: "Verification email sent" }
@@ -321,11 +325,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
     updateUser: async (updates: Partial<User>) => {
       try {
         const response = await api.put('/api/auth/me', updates);
-        const updatedUser = response.data?.user || response.data;
+        // Backend returns: { success: true, message: '...', data: user }
+        const updatedUser = response.data?.data || response.data?.user || response.data;
         
+        // Immediately update local state with the updated user data
         set((state) => ({
           user: state.user ? { ...state.user, ...updatedUser } : updatedUser,
         }));
+        
+        return updatedUser;
       } catch (error: any) {
         console.error('Update user error:', error);
         throw new Error(error.response?.data?.message || error.message || 'Update failed');
@@ -375,7 +383,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // Try to fetch user info
           try {
             const response = await api.get('/api/auth/me');
-            const user = response.data?.user || response.data;
+            // Backend returns: { success: true, message: "...", data: user }
+            const user = response.data?.data || response.data?.user || response.data;
+            
+            console.log('[AuthStore] Init - Raw response:', JSON.stringify(response.data, null, 2));
+            console.log('[AuthStore] Init - Extracted user:', JSON.stringify(user, null, 2));
+            console.log('[AuthStore] Init - User buildingId:', user?.buildingId);
+            console.log('[AuthStore] Init - User building:', user?.building);
             
             // Set token and status together - NEVER set token without status='authenticated'
             set({

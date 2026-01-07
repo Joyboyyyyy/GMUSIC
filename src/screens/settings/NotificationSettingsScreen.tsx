@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useThemeStore, getTheme, Theme } from '../../store/themeStore';
 
 const NotificationSettingsScreen = () => {
   const {
@@ -24,6 +25,9 @@ const NotificationSettingsScreen = () => {
     setFrequency,
     setQuietHours,
   } = useNotificationStore();
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme, isDark);
 
   const frequencyOptions: Array<'daily' | 'weekly' | 'none'> = ['daily', 'weekly', 'none'];
 
@@ -34,7 +38,7 @@ const NotificationSettingsScreen = () => {
         <View style={styles.section}>
           <View style={styles.settingCard}>
             <View style={styles.settingLeft}>
-              <Ionicons name="notifications" size={24} color="#7c3aed" />
+              <Ionicons name="notifications" size={24} color={theme.primary} />
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Allow Notifications</Text>
                 <Text style={styles.settingSubtitle}>
@@ -45,8 +49,8 @@ const NotificationSettingsScreen = () => {
             <Switch
               value={allowNotifications}
               onValueChange={() => toggle('allowNotifications')}
-              trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-              thumbColor={allowNotifications ? '#7c3aed' : '#f3f4f6'}
+              trackColor={{ false: theme.border, true: '#c4b5fd' }}
+              thumbColor={allowNotifications ? theme.primary : theme.surfaceVariant}
             />
           </View>
         </View>
@@ -54,7 +58,7 @@ const NotificationSettingsScreen = () => {
         {/* OS Permission Status */}
         {allowNotifications && (
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={20} color="#7c3aed" />
+            <Ionicons name="information-circle" size={20} color={theme.primary} />
             <Text style={styles.infoText}>
               To receive push notifications, ensure they're enabled in your device settings.
             </Text>
@@ -68,7 +72,7 @@ const NotificationSettingsScreen = () => {
             
             <View style={styles.settingCard}>
               <View style={styles.settingLeft}>
-                <Ionicons name="book" size={22} color="#7c3aed" />
+                <Ionicons name="book" size={22} color={theme.primary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Course Updates</Text>
                   <Text style={styles.settingSubtitle}>
@@ -79,14 +83,14 @@ const NotificationSettingsScreen = () => {
               <Switch
                 value={courseUpdates}
                 onValueChange={() => toggle('courseUpdates')}
-                trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-                thumbColor={courseUpdates ? '#7c3aed' : '#f3f4f6'}
+                trackColor={{ false: theme.border, true: '#c4b5fd' }}
+                thumbColor={courseUpdates ? theme.primary : theme.surfaceVariant}
               />
             </View>
 
             <View style={styles.settingCard}>
               <View style={styles.settingLeft}>
-                <Ionicons name="alarm" size={22} color="#7c3aed" />
+                <Ionicons name="alarm" size={22} color={theme.primary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Practice Reminders</Text>
                   <Text style={styles.settingSubtitle}>
@@ -97,14 +101,14 @@ const NotificationSettingsScreen = () => {
               <Switch
                 value={reminders}
                 onValueChange={() => toggle('reminders')}
-                trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-                thumbColor={reminders ? '#7c3aed' : '#f3f4f6'}
+                trackColor={{ false: theme.border, true: '#c4b5fd' }}
+                thumbColor={reminders ? theme.primary : theme.surfaceVariant}
               />
             </View>
 
             <View style={styles.settingCard}>
               <View style={styles.settingLeft}>
-                <Ionicons name="pricetag" size={22} color="#7c3aed" />
+                <Ionicons name="pricetag" size={22} color={theme.primary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Special Offers</Text>
                   <Text style={styles.settingSubtitle}>
@@ -115,14 +119,14 @@ const NotificationSettingsScreen = () => {
               <Switch
                 value={offers}
                 onValueChange={() => toggle('offers')}
-                trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-                thumbColor={offers ? '#7c3aed' : '#f3f4f6'}
+                trackColor={{ false: theme.border, true: '#c4b5fd' }}
+                thumbColor={offers ? theme.primary : theme.surfaceVariant}
               />
             </View>
 
             <View style={styles.settingCard}>
               <View style={styles.settingLeft}>
-                <Ionicons name="chatbubble" size={22} color="#7c3aed" />
+                <Ionicons name="chatbubble" size={22} color={theme.primary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Messages</Text>
                   <Text style={styles.settingSubtitle}>
@@ -133,8 +137,8 @@ const NotificationSettingsScreen = () => {
               <Switch
                 value={messages}
                 onValueChange={() => toggle('messages')}
-                trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-                thumbColor={messages ? '#7c3aed' : '#f3f4f6'}
+                trackColor={{ false: theme.border, true: '#c4b5fd' }}
+                thumbColor={messages ? theme.primary : theme.surfaceVariant}
               />
             </View>
           </View>
@@ -148,7 +152,7 @@ const NotificationSettingsScreen = () => {
             
             <View style={styles.settingCard}>
               <View style={styles.settingLeft}>
-                <Ionicons name="moon" size={22} color="#7c3aed" />
+                <Ionicons name="moon" size={22} color={theme.primary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Enable Quiet Hours</Text>
                   <Text style={styles.settingSubtitle}>
@@ -159,8 +163,8 @@ const NotificationSettingsScreen = () => {
               <Switch
                 value={quietHours.enabled}
                 onValueChange={(value) => setQuietHours({ enabled: value })}
-                trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-                thumbColor={quietHours.enabled ? '#7c3aed' : '#f3f4f6'}
+                trackColor={{ false: theme.border, true: '#c4b5fd' }}
+                thumbColor={quietHours.enabled ? theme.primary : theme.surfaceVariant}
               />
             </View>
 
@@ -169,7 +173,7 @@ const NotificationSettingsScreen = () => {
                 <View style={styles.timeCard}>
                   <Text style={styles.timeLabel}>Start</Text>
                   <TouchableOpacity style={styles.timePicker}>
-                    <Ionicons name="time" size={18} color="#7c3aed" />
+                    <Ionicons name="time" size={18} color={theme.primary} />
                     <Text style={styles.timeText}>{quietHours.start}</Text>
                   </TouchableOpacity>
                   <Text style={styles.timeHint}>Notifications pause</Text>
@@ -178,7 +182,7 @@ const NotificationSettingsScreen = () => {
                 <View style={styles.timeCard}>
                   <Text style={styles.timeLabel}>End</Text>
                   <TouchableOpacity style={styles.timePicker}>
-                    <Ionicons name="time" size={18} color="#7c3aed" />
+                    <Ionicons name="time" size={18} color={theme.primary} />
                     <Text style={styles.timeText}>{quietHours.end}</Text>
                   </TouchableOpacity>
                   <Text style={styles.timeHint}>Notifications resume</Text>
@@ -194,10 +198,10 @@ const NotificationSettingsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.background,
   },
   section: {
     marginBottom: 24,
@@ -206,20 +210,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: theme.text,
     marginBottom: 12,
   },
   settingCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: isDark ? 0.3 : 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -235,17 +239,17 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.text,
     marginBottom: 4,
   },
   settingSubtitle: {
     fontSize: 13,
-    color: '#6b7280',
+    color: theme.textSecondary,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#f3e8ff',
+    backgroundColor: theme.primaryLight,
     padding: 16,
     borderRadius: 12,
     marginHorizontal: 20,
@@ -255,7 +259,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#5b21b6',
+    color: theme.primary,
     lineHeight: 18,
   },
   frequencyContainer: {
@@ -266,19 +270,19 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: theme.border,
     alignItems: 'center',
   },
   frequencyButtonActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   frequencyText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
+    color: theme.textSecondary,
   },
   frequencyTextActive: {
     color: '#fff',
@@ -290,42 +294,42 @@ const styles = StyleSheet.create({
   },
   timeCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: isDark ? 0.3 : 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   timeLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6b7280',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   timePicker: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.inputBackground,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.border,
     gap: 8,
     marginBottom: 8,
   },
   timeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.text,
   },
   timeHint: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: theme.textMuted,
   },
 });
 

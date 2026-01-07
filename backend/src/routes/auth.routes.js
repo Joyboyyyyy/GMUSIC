@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, googleLogin, getProfile, updateProfile, forgotPassword, resetPassword, resetPasswordGet, testEmail } from '../controllers/auth.controller.js';
+import { register, login, googleLogin, getProfile, updateProfile, forgotPassword, resetPassword, resetPasswordGet, changePassword, testEmail } from '../controllers/auth.controller.js';
 import { verifyEmail, verifyEmailGet } from '../controllers/verify.controller.js';
 import { checkVerification, resendVerification } from '../controllers/verification.controller.js';
 import { authenticate } from '../middleware/auth.js';
@@ -23,6 +23,7 @@ router.post('/test-email', testEmail);
 // Protected routes
 router.get('/me', authenticate, getProfile);
 router.put('/me', authenticate, updateProfile);
+router.post('/change-password', authenticate, changePassword);
 
 export default router;
 

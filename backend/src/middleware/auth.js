@@ -57,7 +57,10 @@ export const authenticate = async (req, res, next) => {
         avatar: true,
         role: true,
         isActive: true,
-        isVerified: true,
+        emailVerified: true,
+        approvalStatus: true,
+        academyId: true,
+        buildingId: true,
       },
     });
     
@@ -112,3 +115,33 @@ export const requireRole = (...roles) => {
   };
 };
 
+
+
+/**
+ * Approval status middleware
+ * Requires user to have ACTIVE approval status
+ * SUPER_ADMIN bypasses this check
+ */
+export const requireApproval = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+  }
+  
+  // SUPER_ADMIN bypasses approval check
+  if (req.user.role === 'SUPER_ADMIN') {
+    return next();
+  }
+  
+  if (req.user.approvalStatus !== 'ACTIVE') {
+    return res.status(403).json({
+      success: false,
+      message: 'Account not approved',
+      approvalStatus: req.user.approvalStatus,
+    });
+  }
+  
+  next();
+};

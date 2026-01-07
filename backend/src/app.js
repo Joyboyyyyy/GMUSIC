@@ -5,6 +5,13 @@ import courseRoutes from "./routes/course.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import razorpayRoutes from "./routes/razorpay.routes.js";
 import zohoRoutes from "./routes/zoho.routes.js";
+import buildingRoutes from "./routes/building.routes.js";
+import slotRoutes from "./routes/slot.routes.js";
+import bookingRoutes from "./routes/booking.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import feedbackRoutes from "./routes/feedback.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 import { verifyEmailRedirect, resetPasswordRedirect } from './controllers/redirect.controller.js';
 
 const app = express();
@@ -31,8 +38,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing middleware - MUST be before routes
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increased limit to 50mb for base64 image uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Debug middleware to log all incoming requests
 app.use((req, res, next) => {
@@ -110,6 +118,13 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/payments/razorpay", razorpayRoutes);
 app.use("/api/zoho", zohoRoutes);
+app.use("/api/buildings", buildingRoutes);
+app.use("/api/slots", slotRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/search", searchRoutes);
 
 // Debug: Log all registered routes in development
 if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {

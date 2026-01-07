@@ -19,6 +19,14 @@ export type RootStackParamList = {
   SelectSlot: { buildingId: string; date?: string };
   BookingSuccess: { bookingId: string };
   Library: undefined;
+  BuildingCourses: { buildingId: string; buildingName: string };
+  AllBuildings: undefined;
+  Feedback: undefined;
+  ChangePassword: undefined;
+  Search: undefined;
+  BuildingMap: undefined;
+  TrinityInfo: undefined;
+  Browse: { category?: string } | undefined;
 };
 
 export type AuthStackParamList = {
@@ -33,7 +41,7 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Dashboard: undefined;
-  Browse: undefined;
+  Nearby: undefined;
   BookRoom: undefined;
   Profile: undefined;
 };

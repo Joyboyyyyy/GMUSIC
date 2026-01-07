@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-import { mockTracks, mockPacks } from '../data/mockData';
+import { mockTracks } from '../data/mockData';
+import { useCourseStore } from '../store/courseStore';
 
 type TrackPlayerScreenRouteProp = RouteProp<RootStackParamList, 'TrackPlayer'>;
 
@@ -21,16 +23,30 @@ const TrackPlayerScreen = () => {
   const { packId, trackId } = route.params;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const { getCourseById, fetchCourses, isLoading } = useCourseStore();
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
   const tracks = mockTracks[packId] || [];
   const currentTrack = tracks.find((t) => t.id === trackId);
-  const pack = mockPacks.find((p) => p.id === packId);
+  const pack = getCourseById(packId);
   const currentIndex = tracks.findIndex((t) => t.id === trackId);
+
+  if (isLoading && !pack) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }]}>
+        <ActivityIndicator size="large" color="#7c3aed" />
+      </View>
+    );
+  }
 
   if (!currentTrack || !pack) {
     return (
-      <View style={styles.container}>
-        <Text>Track not found</Text>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }]}>
+        <Ionicons name="alert-circle-outline" size={48} color="#9ca3af" />
+        <Text style={{ marginTop: 16, color: '#6b7280' }}>Track not found</Text>
       </View>
     );
   }

@@ -2,6 +2,7 @@ import {
   createRazorpayOrder,
   verifyRazorpayPayment,
   handleRazorpayWebhook,
+  failRazorpayPayment,
 } from "../services/razorpay.service.js";
 import { getRazorpay } from "../config/razorpay.js";
 
@@ -112,5 +113,29 @@ export const razorpayWebhook = async (req, res) => {
     res.status(200).send("OK");
   } catch (err) {
     res.status(400).send("Webhook error");
+  }
+};
+
+export const markPaymentFailed = async (req, res) => {
+  try {
+    const { paymentId, reason } = req.body;
+
+    if (!paymentId) {
+      return res.status(400).json({
+        success: false,
+        error: "Payment ID is required",
+      });
+    }
+
+    console.log(`[Razorpay Controller] Marking payment as failed - paymentId: ${paymentId}`);
+    const result = await failRazorpayPayment({ paymentId, reason });
+
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("[Razorpay Controller] Mark payment failed error:", err);
+    res.status(400).json({
+      success: false,
+      error: err.message,
+    });
   }
 };

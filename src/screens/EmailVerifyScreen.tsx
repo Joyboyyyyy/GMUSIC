@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import api from '../utils/api';
+import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 
 type EmailVerifyScreenRouteProp = RouteProp<{ EmailVerify: { token?: string } }, 'EmailVerify'>;
 
@@ -10,6 +11,9 @@ export default function EmailVerifyScreen() {
   const navigation = useNavigation();
   const route = useRoute<EmailVerifyScreenRouteProp>();
   const token = route?.params?.token;
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme, isDark);
 
   // REMOVED: Automatic API verification call
   // Email verification happens in backend GET /api/auth/verify-email
@@ -70,23 +74,23 @@ export default function EmailVerifyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.background,
   },
   text: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   subtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#9ca3af',
+    color: theme.textMuted,
     textAlign: 'center',
     paddingHorizontal: 20,
   },

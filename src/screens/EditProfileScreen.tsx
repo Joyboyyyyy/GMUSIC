@@ -18,21 +18,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system/next';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 import { RootStackParamList } from '../navigation/types';
-import { uploadAvatar } from '../utils/avatar';
-import { getSupabaseUserId } from '../utils/supabase';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const EditProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user, updateUser } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme, isDark);
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [bio, setBio] = useState(user?.bio || '');
-  const [avatar, setAvatar] = useState(user?.avatar || '');
+  const [profilePicture, setProfilePicture] = useState(user?.profilePicture || user?.avatar || '');
   const [loading, setLoading] = useState(false);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [showCheckmark, setShowCheckmark] = useState(false);
@@ -61,8 +64,23 @@ const EditProfileScreen = () => {
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        setPendingImage(imageUri);
-        setAvatar(imageUri);
+        
+        // Convert image to base64 for storage in database
+        try {
+          // Use new expo-file-system/next File class API
+          const file = new File(imageUri);
+          const base64 = await file.base64();
+          const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+          const base64DataUrl = `data:${mimeType};base64,${base64}`;
+          
+          setPendingImage(base64DataUrl);
+          setProfilePicture(base64DataUrl);
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          // Fallback to URI if base64 conversion fails
+          setPendingImage(imageUri);
+          setProfilePicture(imageUri);
+        }
         
         // Show confirmation checkmark
         setShowCheckmark(true);
@@ -108,68 +126,16 @@ const EditProfileScreen = () => {
 
     setLoading(true);
     try {
-      let avatarUrl = avatar;
-      
-      // If there's a pending image (newly picked), upload it to Supabase
-      if (pendingImage && pendingImage !== user?.avatar) {
-        try {
-          // Get Supabase user ID
-          const userId = await getSupabaseUserId();
-          
-          if (!userId) {
-            throw new Error('Unable to get user ID. Please ensure you are logged in.');
-          }
-          
-          console.log('[EditProfile] Uploading avatar for user:', userId);
-          
-          // Upload avatar to Supabase Storage
-          avatarUrl = await uploadAvatar(pendingImage, userId);
-          
-          console.log('[EditProfile] Avatar uploaded successfully:', avatarUrl);
-          
-          // Clear pending image after successful upload
-          setPendingImage(null);
-        } catch (uploadError: any) {
-          console.error('[EditProfile] Avatar upload failed:', uploadError);
-          Alert.alert(
-            'Upload Error',
-            `Failed to upload avatar: ${uploadError.message}. Your profile will be saved without the new avatar.`,
-            [
-              { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
-              { 
-                text: 'Save Anyway', 
-                onPress: async () => {
-                  // Continue with save using existing avatar
-                  try {
-                    await updateUser({
-                      name: name.trim(),
-                      email: email.trim(),
-                      bio: bio.trim(),
-                      avatar: user?.avatar || avatar, // Use existing avatar if upload failed
-                    });
-                    Alert.alert('Success! 🎉', 'Your profile has been updated (avatar upload failed)', [
-                      { text: 'OK', onPress: () => navigation.goBack() },
-                    ]);
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to update profile. Please try again.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              },
-            ]
-          );
-          return;
-        }
-      }
-      
-      // Update user profile with new avatar URL
+      // Update user profile with profilePicture stored directly in database
       await updateUser({
         name: name.trim(),
         email: email.trim(),
         bio: bio.trim(),
-        avatar: avatarUrl,
+        profilePicture: profilePicture, // Save directly to database column
       });
+
+      // Clear pending image after successful save
+      setPendingImage(null);
 
       Alert.alert('Success! 🎉', 'Your profile has been updated successfully', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -197,7 +163,7 @@ const EditProfileScreen = () => {
             <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage}>
               <Image
                 source={{ 
-                  uri: pendingImage || avatar || user?.avatar || 'https://i.pravatar.cc/300' 
+                  uri: pendingImage || profilePicture || user?.profilePicture || user?.avatar || 'https://i.pravatar.cc/300' 
                 }}
                 style={styles.avatar}
               />
@@ -233,7 +199,7 @@ const EditProfileScreen = () => {
                 value={name}
                 onChangeText={setName}
                 placeholder="Enter your name"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textMuted}
               />
             </View>
 
@@ -245,7 +211,7 @@ const EditProfileScreen = () => {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Enter your email"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -259,7 +225,7 @@ const EditProfileScreen = () => {
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Tell us about yourself..."
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -269,7 +235,7 @@ const EditProfileScreen = () => {
 
             {/* Info Card */}
             <View style={styles.infoCard}>
-              <Ionicons name="information-circle" size={20} color="#7c3aed" />
+              <Ionicons name="information-circle" size={20} color={theme.primary} />
               <Text style={styles.infoText}>
                 Your profile information will be visible to instructors and other students.
               </Text>
@@ -299,10 +265,10 @@ const EditProfileScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.background,
   },
   keyboardView: {
     flex: 1,
@@ -314,7 +280,7 @@ const styles = StyleSheet.create({
   photoSection: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     marginBottom: 16,
   },
   avatarContainer: {
@@ -326,24 +292,24 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
-    borderColor: '#7c3aed',
+    borderColor: theme.primary,
   },
   cameraIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#7c3aed',
+    backgroundColor: theme.primary,
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: theme.surface,
   },
   photoHint: {
     fontSize: 14,
-    color: '#6b7280',
+    color: theme.textSecondary,
   },
   formSection: {
     paddingHorizontal: 20,
@@ -351,30 +317,30 @@ const styles = StyleSheet.create({
   },
 
   inputCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: isDark ? 0.3 : 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.text,
     marginBottom: 8,
   },
   input: {
     fontSize: 16,
-    color: '#1f2937',
+    color: theme.text,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.inputBackground,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.border,
   },
   bioInput: {
     minHeight: 100,
@@ -382,14 +348,14 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: theme.textMuted,
     textAlign: 'right',
     marginTop: 8,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#f3e8ff',
+    backgroundColor: theme.primaryLight,
     padding: 16,
     borderRadius: 12,
     gap: 12,
@@ -397,7 +363,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#5b21b6',
+    color: theme.primary,
     lineHeight: 18,
   },
   bottomBar: {
@@ -406,9 +372,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderTopWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -417,7 +383,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flexDirection: 'row',
-    backgroundColor: '#7c3aed',
+    backgroundColor: theme.primary,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,

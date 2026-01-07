@@ -74,6 +74,17 @@ DATABASE_URL="postgresql://user:password@localhost:5432/gretex_music_room"
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key
+PASSWORD_PEPPER=your-password-pepper
+
+# Email (SMTP) - Required for password reset
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-email@domain.com
+SMTP_PASS=your-email-password
+EMAIL_FROM=noreply@yourdomain.com
+BACKEND_URL=http://localhost:3000
+APP_SCHEME=gretexmusicroom://
 
 # Zoho CRM
 ZOHO_CLIENT_ID=your_zoho_client_id
@@ -119,6 +130,9 @@ Server will run on `http://localhost:3000`
 |--------|----------|-------------|---------------|
 | POST | `/register` | Register new user | No |
 | POST | `/login` | Login user | No |
+| POST | `/forgot-password` | Request password reset email | No |
+| GET | `/reset-password/:token` | Redirect to app deep link for password reset | No |
+| POST | `/reset-password` | Reset password with token | No |
 | GET | `/me` | Get current user profile | Yes |
 | PUT | `/me` | Update user profile | Yes |
 
@@ -189,6 +203,54 @@ Content-Type: application/json
 }
 ```
 
+### Forgot Password
+
+```bash
+POST /api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "student@example.com"
+}
+
+Response:
+{
+  "success": true,
+  "message": "If your email is registered, you will receive a reset link.",
+  "data": {
+    "message": "If your email is registered, you will receive a reset link."
+  }
+}
+```
+
+### Reset Password
+
+```bash
+POST /api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "reset-token-from-email",
+  "password": "NewSecurePassword123!"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Password reset successfully",
+  "data": {
+    "message": "Password reset successfully"
+  }
+}
+```
+
+**Note:** The reset token is valid for 15 minutes. Password must meet requirements:
+- Minimum 6 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character
+
 ### Get Courses
 
 ```bash
@@ -235,12 +297,15 @@ Response:
 ## 🔒 Security Features
 
 - ✅ JWT-based authentication
-- ✅ Password hashing with bcrypt
+- ✅ Password hashing with Argon2id
+- ✅ Password reset tokens (SHA-256 hashed, 15-minute expiry)
+- ✅ Email enumeration prevention (consistent success responses)
 - ✅ Role-based access control (STUDENT, TEACHER, ADMIN)
 - ✅ Protected routes with middleware
 - ✅ Input validation
 - ✅ CORS configuration
 - ✅ Environment variable protection
+- ✅ Rate limiting (recommended for forgot-password endpoint)
 
 ---
 

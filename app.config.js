@@ -12,7 +12,7 @@ export default {
       splash: {
         image: "./assets/splash.png",
         resizeMode: "contain",
-        backgroundColor: "#5b21b6"
+        backgroundColor: "#000000"
       },
   
       assetBundlePatterns: ["**/*"],
@@ -20,13 +20,23 @@ export default {
       plugins: [
         "expo-dev-client",
         "expo-secure-store",
-        "expo-apple-authentication"
+        "expo-apple-authentication",
+        [
+          "expo-location",
+          {
+            locationAlwaysAndWhenInUsePermission: "Allow Gretex Music Room to use your location to find nearby music buildings."
+          }
+        ],
+        "@maplibre/maplibre-react-native"
       ],
   
       ios: {
         supportsTablet: true,
         bundleIdentifier: "com.gretexmusicroom.app",
         buildNumber: "1",
+        config: {
+          googleMapsApiKey: "AIzaSyBJEnDWhnnqJgdnmGv84ATJ0QDm60Jo19U"
+        },
         infoPlist: {
           LSApplicationQueriesSchemes: [
             "razorpay",
@@ -44,7 +54,9 @@ export default {
           NSAppTransportSecurity: {
             NSAllowsArbitraryLoads: true
           },
-          UIBackgroundModes: ["audio"]
+          UIBackgroundModes: ["audio"],
+          NSLocationWhenInUseUsageDescription: "Allow Gretex Music Room to use your location to find nearby music buildings.",
+          NSLocationAlwaysUsageDescription: "Allow Gretex Music Room to use your location to find nearby music buildings."
         },
         usesAppleSignIn: true,
         associatedDomains: [
@@ -56,6 +68,15 @@ export default {
         package: "com.rogerr6969.gretexmusicroom",
         versionCode: 1,
         usesCleartextTraffic: true,
+        adaptiveIcon: {
+          foregroundImage: "./assets/adaptive-icon.png",
+          backgroundColor: "#000000"
+        },
+        config: {
+          googleMaps: {
+            apiKey: "AIzaSyBJEnDWhnnqJgdnmGv84ATJ0QDm60Jo19U"
+          }
+        },
         intentFilters: [
           {
             action: "VIEW",
@@ -69,7 +90,9 @@ export default {
         ],
         permissions: [
           "android.permission.INTERNET",
-          "android.permission.ACCESS_NETWORK_STATE"
+          "android.permission.ACCESS_NETWORK_STATE",
+          "android.permission.ACCESS_FINE_LOCATION",
+          "android.permission.ACCESS_COARSE_LOCATION"
         ]
       },
   

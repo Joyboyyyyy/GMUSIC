@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 import { RootStackParamList } from '../navigation/types';
 import { getItem, deleteItem, setItem } from '../utils/storage';
 import api, { setAuthToken as setAxiosAuthToken } from '../utils/api';
@@ -44,6 +45,9 @@ const EmailVerifiedScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('Email verified successfully!');
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme, isDark);
 
   // Get params from route (from deep link)
   const routeParams = route.params as { error?: string; authToken?: string } | undefined;
@@ -286,7 +290,7 @@ const EmailVerifiedScreen = () => {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={theme.primary} />
         <Text style={styles.loadingText}>{statusMessage}</Text>
         <Text style={styles.loadingSubtext}>Please wait...</Text>
       </View>
@@ -297,7 +301,7 @@ const EmailVerifiedScreen = () => {
     const isLoginMessage = error.includes('try logging in') || error.includes('Please login');
     return (
       <View style={styles.container}>
-        <Text style={[styles.errorText, { color: isLoginMessage ? '#10b981' : '#ef4444' }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: isLoginMessage ? theme.success : theme.error }]}>{error}</Text>
       </View>
     );
   }
@@ -309,37 +313,37 @@ const EmailVerifiedScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     padding: 20,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   loadingSubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#9ca3af',
+    color: theme.textMuted,
   },
   text: {
     fontSize: 16,
-    color: '#1f2937',
+    color: theme.text,
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
+    color: theme.error,
     textAlign: 'center',
   },
   successText: {
     fontSize: 18,
-    color: '#10b981',
+    color: theme.success,
     fontWeight: '600',
     textAlign: 'center',
   },

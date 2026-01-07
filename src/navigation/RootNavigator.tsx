@@ -21,8 +21,17 @@ import SelectBuildingScreen from '../screens/booking/SelectBuildingScreen';
 import SelectSlotScreen from '../screens/booking/SelectSlotScreen';
 import BookingSuccessScreen from '../screens/booking/BookingSuccessScreen';
 import LibraryScreen from '../screens/LibraryScreen';
+import BuildingCoursesScreen from '../screens/BuildingCoursesScreen';
+import AllBuildingsScreen from '../screens/AllBuildingsScreen';
+import FeedbackScreen from '../screens/FeedbackScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import SearchScreen from '../screens/SearchScreen';
+import BuildingMapScreen from '../screens/BuildingMapScreen';
+import TrinityInfoScreen from '../screens/TrinityInfoScreen';
+import BrowseScreen from '../screens/BrowseScreen';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore, getTheme } from '../store/themeStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -31,6 +40,8 @@ type RootNav = NativeStackNavigationProp<RootStackParamList>;
 const RootNavigator = () => {
   const navigation = useNavigation<RootNav>();
   const { user, status } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
 
   // Centralized deep link / web URL handler
   // Supports both deep links (mobile) and web URLs (web platform)
@@ -142,9 +153,9 @@ const RootNavigator = () => {
           headerShown: true,
           headerTitle: 'Shopping Cart',
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: theme.surface,
           },
-          headerTintColor: '#1f2937',
+          headerTintColor: theme.text,
         }}
       />
       <Stack.Screen 
@@ -154,9 +165,9 @@ const RootNavigator = () => {
           headerShown: true,
           headerTitle: 'Edit Profile',
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: theme.surface,
           },
-          headerTintColor: '#1f2937',
+          headerTintColor: theme.text,
         }}
       />
       <Stack.Screen 
@@ -166,9 +177,9 @@ const RootNavigator = () => {
           headerShown: true,
           headerTitle: 'Notification Settings',
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: theme.surface,
           },
-          headerTintColor: '#1f2937',
+          headerTintColor: theme.text,
         }}
       />
       <Stack.Screen 
@@ -234,9 +245,81 @@ const RootNavigator = () => {
           headerShown: true,
           headerTitle: 'My Library',
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: theme.surface,
           },
-          headerTintColor: '#1f2937',
+          headerTintColor: theme.text,
+        }}
+      />
+      <Stack.Screen 
+        name="BuildingCourses" 
+        component={BuildingCoursesScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="AllBuildings" 
+        component={AllBuildingsScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="Feedback" 
+        component={FeedbackScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Feedback',
+          headerStyle: {
+            backgroundColor: theme.surface,
+          },
+          headerTintColor: theme.text,
+        }}
+      />
+      <Stack.Screen 
+        name="ChangePassword" 
+        component={ChangePasswordScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Change Password',
+          headerStyle: {
+            backgroundColor: theme.surface,
+          },
+          headerTintColor: theme.text,
+        }}
+      />
+      <Stack.Screen 
+        name="Search" 
+        component={SearchScreen}
+        options={{
+          headerShown: false,
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen 
+        name="BuildingMap" 
+        component={BuildingMapScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="TrinityInfo" 
+        component={TrinityInfoScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="Browse" 
+        component={BrowseScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Browse Lessons',
+          headerStyle: {
+            backgroundColor: theme.surface,
+          },
+          headerTintColor: theme.text,
         }}
       />
     </Stack.Navigator>

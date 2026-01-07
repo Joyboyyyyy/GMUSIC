@@ -1,4 +1,5 @@
 import argon2 from 'argon2';
+import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { add } from 'date-fns';
 import crypto from 'crypto';
@@ -9,9 +10,63 @@ import { sendVerificationEmail, sendPasswordResetEmail } from '../utils/email.js
 
 class AuthService {
   async register(userData) {
-    const { email, password, name, dateOfBirth, address } = userData;
+    const { email, password, name, dateOfBirth, address, phone, buildingCode, buildingId, proofDocument } = userData;
 
     console.log('[Auth Service] Starting registration for:', email);
+
+    // Validate building - support both buildingId (new) and buildingCode (legacy)
+    let requestedBuildingId = null;
+    let buildingApprovalStatus = null;
+    let buildingVisibility = null;
+    
+    if (buildingId) {
+      // New flow: buildingId provided directly from search
+      console.log('[Auth Service] Validating building ID:', buildingId);
+      const building = await db.building.findUnique({
+        where: { id: buildingId },
+        select: { id: true, name: true, approvalStatus: true, visibilityType: true },
+      });
+      
+      if (!building) {
+        throw new Error('Invalid building. Please select a valid building.');
+      }
+      
+      if (building.approvalStatus !== 'ACTIVE') {
+        throw new Error('This building is not yet active. Please contact support.');
+      }
+      
+      requestedBuildingId = building.id;
+      buildingVisibility = building.visibilityType;
+      
+      // PUBLIC buildings: immediate access, PRIVATE: pending verification
+      if (building.visibilityType === 'PUBLIC') {
+        buildingApprovalStatus = 'ACTIVE';
+        console.log('[Auth Service] Public building - immediate access:', building.name);
+      } else {
+        buildingApprovalStatus = 'PENDING_VERIFICATION';
+        console.log('[Auth Service] Private building - pending verification:', building.name);
+      }
+    } else if (buildingCode) {
+      // Legacy flow: buildingCode provided
+      console.log('[Auth Service] Validating building code:', buildingCode);
+      const building = await db.building.findUnique({
+        where: { registrationCode: buildingCode.toUpperCase() },
+        select: { id: true, name: true, approvalStatus: true, visibilityType: true },
+      });
+      
+      if (!building) {
+        throw new Error('Invalid building code. Please check and try again.');
+      }
+      
+      if (building.approvalStatus !== 'ACTIVE') {
+        throw new Error('This building is not yet active. Please contact support.');
+      }
+      
+      requestedBuildingId = building.id;
+      buildingVisibility = building.visibilityType;
+      buildingApprovalStatus = 'PENDING_VERIFICATION';
+      console.log('[Auth Service] Building validated (pending approval):', building.name);
+    }
 
     // Check if user exists
     const existingUser = await db.user.findUnique({
@@ -38,72 +93,48 @@ class AuthService {
 
     console.log('[Auth Service] Creating user in database');
     // Create user with error handling
+    // Building is now REQUIRED - always assign buildingId
+    // For PUBLIC buildings: status = ACTIVE (immediate access)
+    // For PRIVATE buildings: status = PENDING_VERIFICATION (needs admin approval)
     let user;
     try {
-      // Build user data - only include dateOfBirth/address if migration has been applied
-      const userData = {
-        email,
-        password: hashedPassword,
-        name,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7c3aed&color=fff`,
-        isVerified: false,
-      };
-
-      // Try to include new fields if they exist in schema
-      if (dateOfBirth || address) {
-        try {
-          // Test if columns exist by attempting to create with them
-          user = await db.user.create({
-            data: {
-              ...userData,
-              dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-              address: address || null,
-            },
+      user = await db.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7c3aed&color=fff`,
+          emailVerified: false,
+          phone: phone || null,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          // Always assign buildingId (building is now required)
+          buildingId: requestedBuildingId,
+          governmentIdUrl: proofDocument || null, // Proof document for building verification
+          // Approval status based on building type
+          approvalStatus: buildingApprovalStatus || 'ACTIVE',
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatar: true,
+          role: true,
+          createdAt: true,
+          emailVerified: true,
+          buildingId: true,
+          approvalStatus: true,
+          building: {
             select: {
               id: true,
-              email: true,
               name: true,
-              avatar: true,
-              role: true,
-              createdAt: true,
-              isVerified: true,
+              address: true,
+              city: true,
             },
-          });
-        } catch (fieldError) {
-          // If new fields cause error, create without them
-          if (fieldError.code === 'P2022' || fieldError.message?.includes('does not exist')) {
-            console.log('[Auth Service] dateOfBirth/address columns not yet in database, creating user without them');
-            user = await db.user.create({
-              data: userData,
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                avatar: true,
-                role: true,
-                createdAt: true,
-                isVerified: true,
-              },
-            });
-          } else {
-            throw fieldError;
-          }
-        }
-      } else {
-        user = await db.user.create({
-          data: userData,
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            avatar: true,
-            role: true,
-            createdAt: true,
-            isVerified: true,
           },
-        });
-      }
-      console.log('[Auth Service] User created successfully:', user.id);
+        },
+      });
+      
+      console.log('[Auth Service] User created successfully:', user.id, 'buildingId:', user.buildingId);
     } catch (dbError) {
       console.error('[Auth Service] Database error creating user:', dbError);
       
@@ -133,8 +164,8 @@ class AuthService {
       where: { id: user.id },
       data: {
         verificationToken: hashedVerificationToken,
-        verificationExpires: expires,
-        isVerified: false,
+        verificationExpiry: expires,
+        emailVerified: false,
       },
     });
 
@@ -156,7 +187,7 @@ class AuthService {
   }
 
   async login(email, password) {
-    // Enforce exact order: a. Find user, b. If not verified → reject, c. If locked → reject, d. Verify password, e. Generate JWT
+    // Enforce exact order: a. Find user, b. If not verified → reject (for mobile users), c. If locked → reject, d. Verify password, e. Generate JWT
     
     // a. Find user
     const user = await db.user.findUnique({
@@ -169,7 +200,7 @@ class AuthService {
         role: true,
         avatar: true,
         isActive: true,
-        isVerified: true,
+        emailVerified: true,
         failedLoginAttempts: true,
         lastFailedLogin: true,
         isLockedUntil: true,
@@ -183,20 +214,36 @@ class AuthService {
       throw new Error(genericError);
     }
 
-    // b. If not verified → reject
-    if (user.isVerified === false) {
-      throw new Error(genericError);
-    }
-
     // c. If locked → reject
     const now = new Date();
     if (user.isLockedUntil && now < user.isLockedUntil) {
       throw new Error(genericError);
     }
 
-    // d. Verify password
+    // d. Verify password - try Argon2 first, then bcrypt (for web-registered users)
     const pepper = process.env.PASSWORD_PEPPER;
-    const isPasswordValid = await argon2.verify(user.password, password + (pepper || ''));
+    let isPasswordValid = false;
+    let isWebUser = false; // Track if user was registered via web (bcrypt)
+    
+    // Try Argon2id first (mobile app registration)
+    try {
+      isPasswordValid = await argon2.verify(user.password, password + (pepper || ''));
+    } catch (argonError) {
+      // Argon2 verification failed, might be bcrypt hash
+      isPasswordValid = false;
+    }
+    
+    // If Argon2 failed, try bcrypt (web app registration)
+    if (!isPasswordValid) {
+      try {
+        isPasswordValid = await bcrypt.compare(password, user.password);
+        if (isPasswordValid) {
+          isWebUser = true; // User was registered via web with bcrypt
+        }
+      } catch (bcryptError) {
+        isPasswordValid = false;
+      }
+    }
 
     if (!isPasswordValid) {
       // Increment failed login attempts
@@ -221,6 +268,12 @@ class AuthService {
       throw new Error(genericError);
     }
 
+    // b. If not verified → reject (only for mobile-registered users, not web users)
+    // Web users (bcrypt) don't have email verification, so skip this check for them
+    if (!isWebUser && user.emailVerified === false) {
+      throw new Error(genericError);
+    }
+
     // Password is correct - reset failed login attempts
     await db.user.update({
       where: { id: user.id },
@@ -228,6 +281,7 @@ class AuthService {
         failedLoginAttempts: 0,
         lastFailedLogin: null,
         isLockedUntil: null,
+        lastLoginAt: now,
       },
     });
 
@@ -246,6 +300,8 @@ class AuthService {
   }
 
   async getProfile(userId) {
+    console.log('[Auth Service] getProfile called for userId:', userId);
+    
     const user = await db.user.findUnique({
       where: { id: userId },
       select: {
@@ -253,9 +309,24 @@ class AuthService {
         email: true,
         name: true,
         avatar: true,
+        profilePicture: true,
         role: true,
         createdAt: true,
-        isVerified: true,
+        emailVerified: true,
+        dateOfBirth: true,
+        buildingId: true,
+        approvalStatus: true,
+        governmentIdUrl: true,
+        rejectedReason: true,
+        building: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
+            registrationCode: true,
+          },
+        },
       },
     });
 
@@ -263,41 +334,61 @@ class AuthService {
       throw new Error('User not found');
     }
 
-    // Try to get additional fields if they exist in the database
-    // This provides backward compatibility during migration
-    try {
-      const fullUser = await db.user.findUnique({
-        where: { id: userId },
-        select: {
-          dateOfBirth: true,
-          address: true,
-        },
-      });
-      if (fullUser) {
-        return { ...user, dateOfBirth: fullUser.dateOfBirth, address: fullUser.address };
-      }
-    } catch (e) {
-      // Fields don't exist yet, return basic user
-      console.log('[Auth Service] dateOfBirth/address fields not yet in database');
+    console.log('[Auth Service] User found - buildingId:', user.buildingId, 'building:', user.building);
+
+    // Parse requested building ID from rejectedReason if present
+    let requestedBuildingId = null;
+    if (user.rejectedReason?.startsWith('REQUESTED_BUILDING:')) {
+      requestedBuildingId = user.rejectedReason.replace('REQUESTED_BUILDING:', '');
     }
 
-    return user;
+    // Determine building approval status for frontend
+    let buildingApprovalStatus = null;
+    if (user.buildingId) {
+      buildingApprovalStatus = 'APPROVED';
+    } else if (requestedBuildingId) {
+      buildingApprovalStatus = user.approvalStatus; // PENDING_VERIFICATION
+    }
+
+    const result = {
+      ...user,
+      requestedBuildingId,
+      buildingApprovalStatus,
+    };
+    
+    console.log('[Auth Service] Returning profile with buildingId:', result.buildingId);
+    return result;
   }
 
   async updateProfile(userId, updates) {
-    const { name, avatar } = updates;
+    const { name, avatar, profilePicture, bio, email } = updates;
+
+    // Build update data - handle both avatar and profilePicture
+    const updateData = {};
+    
+    if (name) updateData.name = name;
+    if (bio !== undefined) updateData.bio = bio;
+    if (email) updateData.email = email;
+    
+    // Handle profile picture - sync both fields
+    if (profilePicture) {
+      updateData.profilePicture = profilePicture;
+      updateData.avatar = profilePicture; // Keep avatar in sync
+    } else if (avatar) {
+      updateData.avatar = avatar;
+      updateData.profilePicture = avatar; // Keep profilePicture in sync
+    }
 
     const user = await db.user.update({
       where: { id: userId },
-      data: {
-        ...(name && { name }),
-        ...(avatar && { avatar }),
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
         name: true,
         avatar: true,
+        profilePicture: true,
+        bio: true,
         role: true,
       },
     });
@@ -323,13 +414,13 @@ class AuthService {
     console.log('[Auth Service] User found for verification, userId:', user.id);
 
     const now = new Date();
-    if (user.verificationExpires && now > user.verificationExpires) {
+    if (user.verificationExpiry && now > user.verificationExpiry) {
       console.error('[Auth Service] Verification token expired for userId:', user.id);
       throw new Error('Verification token has expired');
     }
 
     // Check if already verified
-    if (user.isVerified) {
+    if (user.emailVerified) {
       console.log('[Auth Service] Email already verified for userId:', user.id);
       // Still generate token for auto-login
       const authToken = generateToken({ userId: user.id, email: user.email, role: user.role });
@@ -342,13 +433,13 @@ class AuthService {
     }
 
     console.log('[Auth Service] Updating user verification status');
-    // Update user: set isVerified = true, clear token fields
+    // Update user: set emailVerified = true, clear token fields
     const updatedUser = await db.user.update({
       where: { id: user.id },
       data: {
-        isVerified: true,
+        emailVerified: true,
         verificationToken: null,
-        verificationExpires: null,
+        verificationExpiry: null,
       },
     });
 
@@ -581,6 +672,88 @@ class AuthService {
   }
 
   /**
+   * Change Password (for logged-in users)
+   * Verifies current password and updates to new password
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    console.log(`[Auth Service] Change password flow started for userId: ${userId}`);
+    
+    // Find user with password
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify current password - try Argon2 first, then bcrypt
+    const pepper = process.env.PASSWORD_PEPPER;
+    let isPasswordValid = false;
+    
+    // Try Argon2id first (mobile app registration)
+    try {
+      isPasswordValid = await argon2.verify(user.password, currentPassword + (pepper || ''));
+    } catch (argonError) {
+      isPasswordValid = false;
+    }
+    
+    // If Argon2 failed, try bcrypt (web app registration)
+    if (!isPasswordValid) {
+      try {
+        isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      } catch (bcryptError) {
+        isPasswordValid = false;
+      }
+    }
+
+    if (!isPasswordValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Validate new password strength
+    if (newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      throw new Error('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      throw new Error('Password must contain at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      throw new Error('Password must contain at least one number');
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      throw new Error('Password must contain at least one special character');
+    }
+
+    // Hash new password with Argon2id
+    const hashedPassword = await argon2.hash(newPassword + (pepper || ''), {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 16,
+      timeCost: 3,
+      parallelism: 1,
+    });
+
+    // Update password
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    console.log(`[Auth Service] Password changed successfully for userId: ${userId}`);
+    return { message: 'Password changed successfully' };
+  }
+
+  /**
    * Google OAuth Login
    * Verifies Google ID token and creates/updates user
    */
@@ -641,7 +814,7 @@ class AuthService {
               avatar: true,
               role: true,
               createdAt: true,
-              isVerified: true,
+              emailVerified: true,
             },
           });
         }
@@ -654,7 +827,7 @@ class AuthService {
             name: name || email.split('@')[0],
             avatar: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || email)}&background=7c3aed&color=fff`,
             password: crypto.randomBytes(32).toString('hex'), // Random password (user can't login with email/password)
-            isVerified: true, // Google accounts are pre-verified
+            emailVerified: true, // Google accounts are pre-verified
           },
           select: {
             id: true,
@@ -663,7 +836,7 @@ class AuthService {
             avatar: true,
             role: true,
             createdAt: true,
-            isVerified: true,
+            emailVerified: true,
           },
         });
         console.log('[Auth Service] New user created via Google:', user.email);
@@ -697,13 +870,13 @@ export async function verifyEmailToken(token) {
 
   console.log('[Auth Service] verifyEmailToken: User found, userId:', user.id);
 
-  if (user.verificationExpires && new Date(user.verificationExpires) < new Date()) {
+  if (user.verificationExpiry && new Date(user.verificationExpiry) < new Date()) {
     console.error('[Auth Service] verifyEmailToken: Token expired for userId:', user.id);
     throw new Error('Verification token expired');
   }
 
   // Check if already verified
-  if (user.isVerified) {
+  if (user.emailVerified) {
     console.log('[Auth Service] verifyEmailToken: Email already verified for userId:', user.id);
     return { message: 'Email already verified' };
   }
@@ -712,9 +885,9 @@ export async function verifyEmailToken(token) {
   await db.user.update({
     where: { id: user.id },
     data: {
-      isVerified: true,
+      emailVerified: true,
       verificationToken: null,
-      verificationExpires: null,
+      verificationExpiry: null,
     },
   });
 
@@ -729,7 +902,7 @@ export async function checkVerificationStatus(email) {
     where: { email },
     select: {
       email: true,
-      isVerified: true,
+      emailVerified: true,
     },
   });
 
@@ -738,12 +911,12 @@ export async function checkVerificationStatus(email) {
     throw new Error('User not found');
   }
 
-  console.log('[Auth Service] checkVerificationStatus: User found, isVerified:', user.isVerified);
+  console.log('[Auth Service] checkVerificationStatus: User found, emailVerified:', user.emailVerified);
   
   return {
     email: user.email,
-    emailVerified: user.isVerified,
-    isVerified: user.isVerified, // Alias for compatibility
+    emailVerified: user.emailVerified,
+    isVerified: user.emailVerified, // Alias for compatibility
   };
 }
 
@@ -756,8 +929,8 @@ export async function resendVerificationEmail(email) {
       id: true,
       email: true,
       name: true,
-      isVerified: true,
-      verificationExpires: true,
+      emailVerified: true,
+      verificationExpiry: true,
     },
   });
 
@@ -766,15 +939,15 @@ export async function resendVerificationEmail(email) {
     throw new Error('User not found');
   }
 
-  if (user.isVerified) {
+  if (user.emailVerified) {
     console.log('[Auth Service] resendVerificationEmail: Email already verified for userId:', user.id);
     throw new Error('Email is already verified');
   }
 
   // Rate limiting: Check if verification email was sent recently (within last 60 seconds)
-  if (user.verificationExpires) {
+  if (user.verificationExpiry) {
     const now = new Date();
-    const timeSinceLastEmail = now.getTime() - user.verificationExpires.getTime();
+    const timeSinceLastEmail = now.getTime() - user.verificationExpiry.getTime();
     // If token was created less than 60 seconds ago, rate limit
     if (timeSinceLastEmail > -60000 && timeSinceLastEmail < 0) {
       const secondsRemaining = Math.ceil(Math.abs(timeSinceLastEmail) / 1000);
@@ -795,7 +968,7 @@ export async function resendVerificationEmail(email) {
     where: { id: user.id },
     data: {
       verificationToken: hashedVerificationToken,
-      verificationExpires: expires,
+      verificationExpiry: expires,
     },
   });
 

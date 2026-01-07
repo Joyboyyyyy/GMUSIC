@@ -17,8 +17,9 @@ interface CourseState {
   isLoading: boolean;
   error: string | null;
   lastFetched: number | null;
-  fetchCourses: () => Promise<void>;
+  fetchCourses: (forceRefresh?: boolean, buildingId?: string) => Promise<void>;
   getCourseById: (id: string) => MusicPack | undefined;
+  refreshCourses: (buildingId?: string) => Promise<void>;
 }
 
 // Transform backend course to frontend MusicPack format
@@ -29,6 +30,7 @@ const transformCourse = (course: any): MusicPack => ({
   teacher: course.teacher || defaultTeacher,
   price: course.price,
   thumbnailUrl: course.thumbnailUrl || 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=800',
+  videoUrl: course.videoUrl || null,
   category: course.category || 'Guitar',
   rating: course.rating || 4.5,
   studentsCount: course.studentsCount || 0,
@@ -45,24 +47,28 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   error: null,
   lastFetched: null,
 
-  fetchCourses: async () => {
-    // Skip if recently fetched (within 5 minutes)
+  fetchCourses: async (forceRefresh = false, buildingId?: string) => {
+    // Skip if recently fetched (within 5 minutes) unless force refresh
     const { lastFetched } = get();
-    if (lastFetched && Date.now() - lastFetched < 5 * 60 * 1000) {
+    if (!forceRefresh && lastFetched && Date.now() - lastFetched < 5 * 60 * 1000) {
       return;
     }
 
     set({ isLoading: true, error: null });
 
     try {
-      const url = getApiUrl('api/courses');
+      // Build URL with buildingId if user has one
+      let url = getApiUrl('api/courses');
+      if (buildingId) {
+        url += `?buildingId=${buildingId}`;
+      }
       console.log('[CourseStore] Fetching courses from:', url);
       
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true', // Skip ngrok warning page
+          'ngrok-skip-browser-warning': 'true',
         },
       });
       
@@ -104,5 +110,10 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
   getCourseById: (id: string) => {
     return get().courses.find(course => course.id === id);
+  },
+
+  refreshCourses: async (buildingId?: string) => {
+    // Force refresh courses from API
+    await get().fetchCourses(true, buildingId);
   },
 }));

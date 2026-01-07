@@ -7,23 +7,37 @@ export const register = async (req, res) => {
     console.log('[Auth Controller] Register request body:', JSON.stringify(req.body, null, 2));
     console.log('[Auth Controller] Request headers:', req.headers['content-type']);
     
-    // Destructure from req.body (not req.body.data)
-    const { email, password, name } = req.body;
+    // Destructure from req.body (including building fields)
+    const { email, password, name, dateOfBirth, address, phone, buildingCode, proofDocument } = req.body;
 
     console.log('[Auth Controller] Extracted fields:', { 
       email: email ? 'provided' : 'missing',
       password: password ? 'provided' : 'missing',
-      name: name ? 'provided' : 'missing'
+      name: name ? 'provided' : 'missing',
+      phone: phone ? 'provided' : 'not provided',
+      dateOfBirth: dateOfBirth ? 'provided' : 'not provided',
+      address: address ? 'provided' : 'not provided',
+      buildingCode: buildingCode ? 'provided' : 'not provided',
+      proofDocument: proofDocument ? 'provided (base64)' : 'not provided'
     });
 
-    // Validation guard - return 400 if any field is missing
+    // Validation guard - return 400 if required fields are missing
     if (!email || !password || !name) {
       console.log('[Auth Controller] Validation failed - missing fields');
       return errorResponse(res, 'All fields are required: name, email, and password', 400);
     }
 
     console.log('[Auth Controller] Calling authService.register');
-    const result = await authService.register({ email, password, name });
+    const result = await authService.register({ 
+      email, 
+      password, 
+      name, 
+      dateOfBirth, 
+      address, 
+      phone,
+      buildingCode,
+      proofDocument 
+    });
 
     console.log('[Auth Controller] Registration successful, returning response');
     return successResponse(res, result, result.message || 'Verification email sent', 201);
@@ -258,6 +272,25 @@ export const resetPassword = async (req, res) => {
     return successResponse(res, result, result.message);
   } catch (error) {
     return errorResponse(res, error.message || 'Password reset failed', 400);
+  }
+};
+
+// Change Password Controller (for logged-in users)
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return errorResponse(res, 'Current password and new password are required', 400);
+    }
+
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
+    
+    return successResponse(res, result, result.message);
+  } catch (error) {
+    console.error('[Auth Controller] Change password error:', error);
+    return errorResponse(res, error.message || 'Failed to change password', 400);
   }
 };
 

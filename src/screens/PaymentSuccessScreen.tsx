@@ -13,6 +13,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
+import { useAuthStore } from '../store/authStore';
+import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 
 type PaymentSuccessScreenRouteProp = RouteProp<RootStackParamList, 'PaymentSuccess'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -22,29 +24,46 @@ const PaymentSuccessScreen = () => {
   const route = useRoute<PaymentSuccessScreenRouteProp>();
   const { packId, packIds } = route.params || {};
   const { addPurchasedCourse, addPurchasedCourses } = usePurchasedCoursesStore();
+  const { fetchMe, setUserFromBackend } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme, isDark);
 
   useEffect(() => {
     // Add purchased course(s) to store when screen loads
     if (packIds && packIds.length > 0) {
-      // Multiple courses purchased
-      packIds.forEach((id) => {
-        if (id) {
-          addPurchasedCourse(id);
-        }
-      });
+      // Multiple courses purchased - use bulk operation for better performance
+      const validIds = packIds.filter((id) => id); // Filter out any undefined/null values
+      if (validIds.length > 0) {
+        addPurchasedCourses(validIds);
+      }
     } else if (packId) {
       // Single course purchased
       addPurchasedCourse(packId);
     } else {
       // Fallback: packId not provided
-      console.warn('PaymentSuccessScreen: No packId or packIds provided');
+      console.warn('[PaymentSuccessScreen] No packId or packIds provided');
       Alert.alert(
         'Warning',
         'Purchase recorded, but course ID was not provided. Please contact support if you do not see your course in the library.',
         [{ text: 'OK' }]
       );
     }
-  }, [packId, packIds, addPurchasedCourse]);
+    
+    // Refresh user data to get updated building assignment
+    const refreshUserData = async () => {
+      try {
+        const { user } = await fetchMe();
+        if (user) {
+          setUserFromBackend(user);
+          console.log('[PaymentSuccessScreen] User data refreshed, buildingId:', user.buildingId);
+        }
+      } catch (error) {
+        console.error('[PaymentSuccessScreen] Error refreshing user data:', error);
+      }
+    };
+    refreshUserData();
+  }, [packId, packIds, addPurchasedCourse, addPurchasedCourses, fetchMe, setUserFromBackend]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -115,10 +134,10 @@ const PaymentSuccessScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -134,25 +153,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: theme.text,
     marginBottom: 16,
     textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: '#4b5563',
+    color: theme.textSecondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subMessage: {
     fontSize: 14,
-    color: '#6b7280',
+    color: theme.textMuted,
     marginBottom: 40,
     textAlign: 'center',
   },
   button: {
     flexDirection: 'row',
-    backgroundColor: '#7c3aed',
+    backgroundColor: theme.primary,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -172,7 +191,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   secondaryButtonText: {
-    color: '#7c3aed',
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '500',
   },

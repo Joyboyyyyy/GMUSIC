@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MusicPack } from '../types';
-import { useCartStore, CartItem } from '../store/cartStore';
+import { useThemeStore, getTheme } from '../store/themeStore';
+import BlinkitCartButton from './BlinkitCartButton';
 
 interface PackCardProps {
   pack: MusicPack;
@@ -11,156 +12,56 @@ interface PackCardProps {
 }
 
 const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
-  const { addToCart } = useCartStore();
-
-  const handleAddToCart = (e: any) => {
-    e.stopPropagation();
-    const cartItem: CartItem = {
-      id: `${pack.id}-${Date.now()}`,
-      packId: pack.id,
-      title: pack.title,
-      price: pack.price,
-      thumbnailUrl: pack.thumbnailUrl,
-      teacher: {
-        name: pack.teacher.name,
-      },
-    };
-    addToCart(cartItem);
-    Alert.alert('Added to Cart', `${pack.title} has been added to your cart`);
-  };
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+  const styles = createStyles(theme);
 
   return (
-    <TouchableOpacity style={[styles.container, fullWidth && styles.fullWidthContainer]} onPress={onPress}>
-      <Image source={{ uri: pack.thumbnailUrl }} style={styles.thumbnail} />
+    <TouchableOpacity style={[styles.container, fullWidth && styles.fullWidthContainer]} onPress={onPress} activeOpacity={0.9}>
+      <View style={styles.imageContainer}>
+        <Image source={{ uri: pack.thumbnailUrl }} style={styles.thumbnail} />
+        <View style={styles.priceBadge}>
+          <Text style={styles.priceText}>₹{pack.price}</Text>
+        </View>
+      </View>
+      
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>
-          {pack.title}
-        </Text>
+        <Text style={styles.title} numberOfLines={2}>{pack.title}</Text>
         <Text style={styles.teacher}>{pack.teacher.name}</Text>
+        
         <View style={styles.footer}>
-          <View style={styles.rating}>
-            <Ionicons name="star" size={14} color="#f59e0b" />
-            <Text style={styles.ratingText}>{pack.rating}</Text>
-            <Text style={styles.students}>({pack.studentsCount.toLocaleString()})</Text>
+          <View style={styles.metaRow}>
+            <View style={styles.rating}>
+              <Ionicons name="star" size={12} color="#f59e0b" />
+              <Text style={styles.ratingText}>{pack.rating}</Text>
+            </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pack.level}</Text>
+            </View>
           </View>
-          <Text style={styles.price}>₹{pack.price}</Text>
+          <BlinkitCartButton pack={pack} size="small" />
         </View>
-        <View style={styles.badges}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{pack.level}</Text>
-          </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{pack.tracksCount} lessons</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
-          <Ionicons name="cart-outline" size={14} color="#fff" />
-          <Text style={styles.addToCartText}>Add to Cart</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    width: 280,
-    marginRight: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  fullWidthContainer: {
-    width: '100%',
-    marginRight: 0,
-  },
-  thumbnail: {
-    width: '100%',
-    height: 160,
-    backgroundColor: '#e5e7eb',
-  },
-  content: {
-    padding: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  teacher: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginLeft: 4,
-  },
-  students: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginLeft: 4,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#7c3aed',
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  badge: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  addToCartButton: {
-    flexDirection: 'row',
-    backgroundColor: '#7c3aed',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginTop: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  addToCartText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
+  container: { width: 200, marginRight: 12, backgroundColor: theme.card, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
+  fullWidthContainer: { width: '100%', marginRight: 0 },
+  imageContainer: { position: 'relative' },
+  thumbnail: { width: '100%', height: 120, backgroundColor: theme.surfaceVariant },
+  priceBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: theme.card, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 },
+  priceText: { fontSize: 14, fontWeight: '700', color: theme.primary },
+  content: { padding: 12 },
+  title: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 4, lineHeight: 18 },
+  teacher: { fontSize: 12, color: theme.textSecondary, marginBottom: 10 },
+  footer: { gap: 10 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { fontSize: 12, fontWeight: '600', color: theme.text },
+  badge: { backgroundColor: theme.primaryLight, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  badgeText: { fontSize: 10, color: theme.primary, fontWeight: '600' },
 });
 
 export default PackCard;
-

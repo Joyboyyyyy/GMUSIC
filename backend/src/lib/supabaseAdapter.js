@@ -95,7 +95,7 @@ class SupabaseAdapter {
           if (where.email) query = query.eq('email', where.email);
           if (where.verificationToken) query = query.eq('verificationToken', where.verificationToken);
           if (where.resetToken) query = query.eq('resetToken', where.resetToken);
-          if (where.isVerified !== undefined) query = query.eq('isVerified', where.isVerified);
+          if (where.emailVerified !== undefined) query = query.eq('emailVerified', where.emailVerified);
         }
         
         const { data, error } = await query.select(buildSelect(select)).limit(1).maybeSingle();
@@ -662,8 +662,8 @@ class SupabaseAdapter {
       failedLoginAttempts: true,
       isLockedUntil: true,
       lastFailedLogin: true,
-      isVerified: true,
-      verificationExpires: true,
+      emailVerified: true,
+      verificationExpiry: true,
       verificationToken: true,
       isActive: true,
       createdAt: true

@@ -1,59 +1,507 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp")]
 }
 
 model User {
-  id               String   @id @default(uuid())
-  email            String   @unique
-  password         String
-
-  resetToken       String?
-  resetTokenExpiry DateTime?
-
-  // existing fields stay as-is
-  name                String
-  role                String       @default("user")
-  createdAt           DateTime     @default(now())
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email               String               @unique @db.VarChar(255)
+  password            String               @db.VarChar(255)
+  name                String               @db.VarChar(100)
+  phone               String?              @db.VarChar(20)
   avatar              String?
-  failedLoginAttempts Int          @default(0)
-  isLockedUntil       DateTime?
-  lastFailedLogin     DateTime?
-  isVerified          Boolean      @default(false)
-  verificationExpires DateTime?
-  verificationToken   String?
-  isActive            Boolean      @default(true)
-  
-  // Profile fields
-  dateOfBirth         DateTime?
-  address             String?
-  
-  enrollments         Enrollment[]
+  role                UserRole             @default(STUDENT)
+  academyId           String?              @db.Uuid
+  buildingId          String?              @db.Uuid
+  specializations     InstrumentCategory[]
+  yearsOfExperience   Int?                 @db.SmallInt
+  bio                 String?
+  profilePicture      String?
+  resumeUrl           String?
+  certificatesUrl     String?
+  governmentIdUrl     String?
+  latitude            Float?
+  longitude           Float?
+  dateOfBirth         DateTime?            @db.Date
+  failedLoginAttempts Int                  @default(0) @db.SmallInt
+  isLockedUntil       DateTime?            @db.Timestamptz(6)
+  lastFailedLogin     DateTime?            @db.Timestamptz(6)
+  passwordChangedAt   DateTime             @default(now()) @db.Timestamptz(6)
+  approvalStatus      ApprovalStatus       @default(PENDING_VERIFICATION)
+  approvedBy          String?              @db.Uuid
+  approvedAt          DateTime?            @db.Timestamptz(6)
+  rejectedReason      String?
+  isActive            Boolean              @default(true)
+  deletedAt           DateTime?            @db.Timestamptz(6)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(6)
+  lastLoginAt         DateTime?            @db.Timestamptz(6)
+  emailVerified       Boolean              @default(false)
+  resetToken          String?              @db.VarChar(255)
+  resetTokenExpiry    DateTime?            @db.Timestamptz(6)
+  verificationExpiry  DateTime?            @db.Timestamptz(6)
+  verificationToken   String?              @db.VarChar(255)
+  auditLogs           AuditLog[]
+  cartItems           CartItem[]
+  feedbacks           Feedback[]
+  notifications       Notification[]
+  payments            Payment[]
+  slotEnrollments     SlotEnrollment[]
+  teacherAssignments  TeacherAssignment[]  @relation("TeacherUser")
+  academy             MusicAcademy?        @relation(fields: [academyId], references: [id])
+  building            Building?            @relation(fields: [buildingId], references: [id])
+
+  @@index([email])
+  @@index([role])
+  @@index([academyId])
+  @@index([buildingId])
+  @@index([approvalStatus])
+  @@index([isActive])
+  @@map("users")
+}
+
+model MusicAcademy {
+  id                         String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                       String               @db.VarChar(200)
+  businessRegistrationNumber String?              @db.VarChar(100)
+  taxId                      String?              @db.VarChar(100)
+  address                    String               @db.VarChar(255)
+  city                       String               @db.VarChar(100)
+  state                      String               @db.VarChar(100)
+  country                    String               @db.VarChar(100)
+  zipCode                    String               @db.VarChar(20)
+  contactPersonName          String               @db.VarChar(100)
+  contactEmail               String               @db.VarChar(255)
+  contactPhone               String               @db.VarChar(20)
+  website                    String?              @db.VarChar(255)
+  yearsInOperation           Int?                 @db.SmallInt
+  specializations            InstrumentCategory[]
+  businessLicenseUrl         String?
+  insuranceCertUrl           String?
+  additionalDocuments        Json?
+  approvalStatus             ApprovalStatus       @default(PENDING_VERIFICATION)
+  approvedBy                 String?              @db.Uuid
+  approvedAt                 DateTime?            @db.Timestamptz(6)
+  rejectedReason             String?
+  isActive                   Boolean              @default(true)
+  deletedAt                  DateTime?            @db.Timestamptz(6)
+  createdAt                  DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt                  DateTime             @updatedAt @db.Timestamptz(6)
+  academyBuildings           AcademyBuilding[]
+  teacherAssignments         TeacherAssignment[]
+  users                      User[]
+
+  @@index([approvalStatus])
+  @@index([isActive])
+  @@map("music_academies")
+}
+
+model Building {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String              @db.VarChar(200)
+  registrationCode   String              @unique @db.VarChar(8)
+  address            String              @db.VarChar(255)
+  city               String              @db.VarChar(100)
+  state              String              @db.VarChar(100)
+  country            String              @db.VarChar(100)
+  zipCode            String              @db.VarChar(20)
+  latitude           Float
+  longitude          Float
+  visibilityType     VisibilityType      @default(PRIVATE)
+  residenceCount     Int
+  musicRoomCount     Int
+  contactPersonName  String              @db.VarChar(100)
+  contactEmail       String              @db.VarChar(255)
+  contactPhone       String              @db.VarChar(20)
+  approvalStatus     ApprovalStatus      @default(PENDING_VERIFICATION)
+  approvedBy         String?             @db.Uuid
+  approvedAt         DateTime?           @db.Timestamptz(6)
+  rejectedReason     String?
+  isActive           Boolean             @default(true)
+  deletedAt          DateTime?           @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
+  academyBuildings   AcademyBuilding[]
+  auditLogs          AuditLog[]
+  courses            Course[]
+  musicRooms         MusicRoom[]
+  teacherAssignments TeacherAssignment[]
+  users              User[]
+
+  @@index([registrationCode])
+  @@index([approvalStatus])
+  @@index([visibilityType])
+  @@index([isActive])
+  @@index([latitude, longitude])
+  @@map("buildings")
+}
+
+model AcademyBuilding {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  academyId  String       @db.Uuid
+  buildingId String       @db.Uuid
+  assignedBy String       @db.Uuid
+  assignedAt DateTime     @default(now()) @db.Timestamptz(6)
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime     @updatedAt @db.Timestamptz(6)
+  academy    MusicAcademy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  building   Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@unique([academyId, buildingId])
+  @@index([academyId])
+  @@index([buildingId])
+  @@map("academy_buildings")
+}
+
+model MusicRoom {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buildingId  String               @db.Uuid
+  name        String               @db.VarChar(100)
+  floor       String?              @db.VarChar(20)
+  capacity    Int                  @default(10) @db.SmallInt
+  instruments InstrumentCategory[]
+  isActive    Boolean              @default(true)
+  deletedAt   DateTime?            @db.Timestamptz(6)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime             @updatedAt @db.Timestamptz(6)
+  courses     Course[]
+  building    Building             @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId])
+  @@map("music_rooms")
 }
 
 model Course {
-  id          String       @id @default(uuid())
-  title       String
-  description String?
-  price       Float
-  duration    Int
-  zohoItemId  String?
-  enrollments Enrollment[]
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buildingId         String             @db.Uuid
+  musicRoomId        String?            @db.Uuid
+  description        String?
+  instrument         InstrumentCategory
+  previewVideoUrl    String?
+  pricePerSlot       Float
+  currency           String             @default("INR") @db.VarChar(3)
+  durationMinutes    Int                @default(60) @db.SmallInt
+  maxStudentsPerSlot Int                @default(1) @db.SmallInt
+  startDate          DateTime           @db.Date
+  endDate            DateTime           @db.Date
+  defaultStartTime   String             @db.VarChar(5)
+  defaultEndTime     String             @db.VarChar(5)
+  daysOfWeek         Int[]
+  isActive           Boolean            @default(true)
+  deletedAt          DateTime?          @db.Timestamptz(6)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
+  name               String             @db.VarChar(200)
+  building           Building           @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  musicRoom          MusicRoom?         @relation(fields: [musicRoomId], references: [id])
+  timeSlots          TimeSlot[]
+
+  @@index([buildingId])
+  @@index([instrument])
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@map("courses")
 }
 
-model Enrollment {
-  id            String   @id @default(uuid())
-  userId        String
-  courseId      String
-  status        String   @default("pending")
-  zohoInvoiceId String?
-  paymentId     String?
-  createdAt     DateTime @default(now())
-  course        Course   @relation(fields: [courseId], references: [id])
-  user          User     @relation(fields: [userId], references: [id])
+model TimeSlot {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courseId          String           @db.Uuid
+  teacherId         String?          @db.Uuid
+  slotDate          DateTime         @db.Date
+  startTime         DateTime         @db.Timestamptz(6)
+  endTime           DateTime         @db.Timestamptz(6)
+  maxCapacity       Int              @db.SmallInt
+  currentEnrollment Int              @default(0) @db.SmallInt
+  status            SlotStatus       @default(SCHEDULED)
+  isActive          Boolean          @default(true)
+  deletedAt         DateTime?        @db.Timestamptz(6)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(6)
+  cartItems         CartItem[]
+  slotEnrollments   SlotEnrollment[]
+  course            Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([teacherId])
+  @@index([slotDate])
+  @@index([startTime, endTime])
+  @@index([status])
+  @@map("time_slots")
+}
+
+model TeacherAssignment {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  academyId             String               @db.Uuid
+  teacherId             String               @db.Uuid
+  buildingId            String               @db.Uuid
+  authorizedInstruments InstrumentCategory[]
+  assignedBy            String               @db.Uuid
+  assignedAt            DateTime             @default(now()) @db.Timestamptz(6)
+  isActive              Boolean              @default(true)
+  createdAt             DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @db.Timestamptz(6)
+  academy               MusicAcademy         @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  building              Building             @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  teacher               User                 @relation("TeacherUser", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, buildingId])
+  @@index([academyId])
+  @@index([teacherId])
+  @@index([buildingId])
+  @@map("teacher_assignments")
+}
+
+model SlotEnrollment {
+  id                   String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slotId               String           @db.Uuid
+  studentId            String           @db.Uuid
+  status               EnrollmentStatus @default(CONFIRMED)
+  waitlistPosition     Int?             @db.SmallInt
+  promotedAt           DateTime?        @db.Timestamptz(6)
+  promotedFromWaitlist Boolean          @default(false)
+  cancelledAt          DateTime?        @db.Timestamptz(6)
+  cancelledBy          String?          @db.Uuid
+  cancelReason         String?
+  paymentId            String?          @db.Uuid
+  createdAt            DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @db.Timestamptz(6)
+  slot                 TimeSlot         @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  student              User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, studentId])
+  @@index([slotId])
+  @@index([studentId])
+  @@index([status])
+  @@map("slot_enrollments")
+}
+
+model CartItem {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId  String   @db.Uuid
+  slotId     String   @db.Uuid
+  priceAtAdd Float
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  slot       TimeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, slotId])
+  @@index([studentId])
+  @@map("cart_items")
+}
+
+model Payment {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId        String        @db.Uuid
+  amount           Float
+  currency         String        @default("INR") @db.VarChar(3)
+  status           PaymentStatus @default(PENDING)
+  gatewayOrderId   String?       @db.VarChar(255)
+  gatewayPaymentId String?       @db.VarChar(255)
+  gatewaySignature String?
+  slotIds          String[]      @db.Uuid
+  initiatedAt      DateTime      @default(now()) @db.Timestamptz(6)
+  completedAt      DateTime?     @db.Timestamptz(6)
+  failedAt         DateTime?     @db.Timestamptz(6)
+  refundedAt       DateTime?     @db.Timestamptz(6)
+  refundAmount     Float?
+  refundReason     String?
+  createdAt        DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @db.Timestamptz(6)
+  student          User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([status])
+  @@index([gatewayOrderId])
+  @@map("payments")
+}
+
+model AuditLog {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String?     @db.Uuid
+  buildingId       String?     @db.Uuid
+  action           AuditAction
+  entityType       String      @db.VarChar(50)
+  entityId         String?     @db.Uuid
+  previousState    Json?
+  newState         Json?
+  metadata         Json?
+  ipAddress        String      @db.VarChar(45)
+  userAgent        String?
+  timestamp        DateTime    @default(now()) @db.Timestamptz(6)
+  deletedUserEmail String?     @db.VarChar(255)
+  deletedUserName  String?     @db.VarChar(100)
+  building         Building?   @relation(fields: [buildingId], references: [id])
+  user             User?       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([buildingId])
+  @@index([action])
+  @@index([timestamp])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @db.Uuid
+  title     String    @db.VarChar(200)
+  message   String
+  type      String    @db.VarChar(50)
+  actionUrl String?
+  metadata  String?
+  isRead    Boolean   @default(false)
+  readAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Feedback {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  type      String
+  subject   String?
+  message   String
+  rating    Int?
+  status    String   @default("pending")
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@map("feedbacks")
+}
+
+model FAQ {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  question  String
+  answer    String
+  category  String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([category])
+  @@index([isActive])
+  @@map("faqs")
+}
+
+model TeacherRating {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId    String   @db.Uuid
+  teacherId    String   @db.Uuid
+  courseId     String   @db.Uuid
+  enrollmentId String?  @db.Uuid
+  rating       Int      @db.SmallInt
+  comment      String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([studentId, teacherId, courseId])
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([courseId])
+  @@map("teacher_ratings")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ACADEMY_ADMIN
+  BUILDING_ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum ApprovalStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  REJECTED
+  BLOCKED
+}
+
+enum VisibilityType {
+  PUBLIC
+  PRIVATE
+}
+
+enum EnrollmentStatus {
+  CONFIRMED
+  WAITLIST
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum SlotStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InstrumentCategory {
+  PIANO
+  GUITAR
+  VIOLIN
+  DRUMS
+  FLUTE
+  SAXOPHONE
+  KEYBOARD
+  VOCALS
+  OTHER
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+  USER_REGISTERED
+  USER_APPROVED
+  USER_REJECTED
+  USER_BLOCKED
+  USER_UNBLOCKED
+  PROFILE_UPDATED
+  FEEDBACK_SUBMITTED
+  ACADEMY_CREATED
+  TEACHER_CREATED
+  TEACHER_ASSIGNED
+  TEACHER_UNASSIGNED
+  BUILDING_CREATED
+  BUILDING_UPDATED
+  VISIBILITY_CHANGED
+  COURSE_CREATED
+  COURSE_UPDATED
+  SLOT_CREATED
+  SLOT_UPDATED
+  SLOT_CANCELLED
+  SLOT_BOOKED
+  BOOKING_CANCELLED
+  WAITLIST_PROMOTED
+  PAYMENT_INITIATED
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+  PAYMENT_REFUNDED
 }
