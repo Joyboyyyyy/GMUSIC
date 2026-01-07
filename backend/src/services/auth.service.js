@@ -202,7 +202,6 @@ class AuthService {
         // Don't fail registration if notifications fail
       }
     }
-    }
 
     console.log('[Auth Service] Registration completed successfully');
     // Return only success message - NO JWT token until email is verified
