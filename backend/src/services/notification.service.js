@@ -157,6 +157,83 @@ class NotificationService {
       { slotId: bookingDetails.slotId }
     );
   }
+
+  // Notify building admins when a user enrolls in a private building
+  async notifyBuildingAdminsNewEnrollment(buildingId, userDetails) {
+    try {
+      // Find all admins for this building (BUILDING_ADMIN role with matching buildingId)
+      const buildingAdmins = await db.user.findMany({
+        where: {
+          buildingId: buildingId,
+          role: 'BUILDING_ADMIN',
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+
+      // Also find SUPER_ADMIN and ACADEMY_ADMIN users who might manage this building
+      const superAdmins = await db.user.findMany({
+        where: {
+          role: { in: ['SUPER_ADMIN', 'ACADEMY_ADMIN'] },
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+
+      const allAdmins = [...buildingAdmins, ...superAdmins];
+
+      if (allAdmins.length === 0) {
+        console.log('[NotificationService] No admins found for building:', buildingId);
+        return [];
+      }
+
+      // Create notification for each admin
+      const notifications = await Promise.all(
+        allAdmins.map(admin =>
+          this.createNotification(
+            admin.id,
+            'New Building Enrollment Request',
+            `${userDetails.name} (${userDetails.email}) has requested to join your building. Please review their application.`,
+            'approval',
+            '/admin/building-approvals',
+            JSON.stringify({ 
+              userId: userDetails.userId, 
+              buildingId: buildingId,
+              userName: userDetails.name,
+              userEmail: userDetails.email,
+              hasProofDocument: !!userDetails.proofDocument
+            })
+          )
+        )
+      );
+
+      console.log(`[NotificationService] Sent ${notifications.length} notifications to building admins for building:`, buildingId);
+      return notifications;
+    } catch (error) {
+      console.error('[NotificationService] Error notifying building admins:', error);
+      return [];
+    }
+  }
+
+  // Notify user when their building enrollment is pending
+  async notifyUserBuildingPending(userId, buildingName) {
+    return this.createNotification(
+      userId,
+      'Building Access Pending',
+      `Your request to join ${buildingName} is pending approval. You will be notified once an admin reviews your application.`,
+      'approval',
+      '/profile',
+      JSON.stringify({ buildingName })
+    );
+  }
 }
 
 export default new NotificationService();

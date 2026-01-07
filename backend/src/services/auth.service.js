@@ -7,6 +7,7 @@ import { OAuth2Client } from 'google-auth-library';
 import db from '../lib/db.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../utils/email.js';
+import notificationService from './notification.service.js';
 
 class AuthService {
   async register(userData) {
@@ -177,6 +178,30 @@ class AuthService {
     } catch (emailError) {
       console.error('[Auth Service] Failed to send verification email:', emailError);
       // Don't fail registration if email fails, just log it
+    }
+
+    // Send notifications for private building enrollment
+    if (buildingVisibility === 'PRIVATE' && requestedBuildingId) {
+      console.log('[Auth Service] Private building - sending notifications to admins');
+      try {
+        // Notify building admins about new enrollment request
+        await notificationService.notifyBuildingAdminsNewEnrollment(requestedBuildingId, {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          proofDocument: proofDocument,
+        });
+        
+        // Notify user that their request is pending
+        const buildingName = user.building?.name || 'the building';
+        await notificationService.notifyUserBuildingPending(user.id, buildingName);
+        
+        console.log('[Auth Service] Notifications sent for private building enrollment');
+      } catch (notifError) {
+        console.error('[Auth Service] Failed to send notifications:', notifError);
+        // Don't fail registration if notifications fail
+      }
+    }
     }
 
     console.log('[Auth Service] Registration completed successfully');
