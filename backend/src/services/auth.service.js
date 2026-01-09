@@ -1,4 +1,3 @@
-import argon2 from 'argon2';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { add } from 'date-fns';
@@ -11,7 +10,18 @@ import notificationService from './notification.service.js';
 
 class AuthService {
   async register(userData) {
-    const { email, password, name, dateOfBirth, address, phone, buildingCode, buildingId, proofDocument } = userData;
+    const { 
+      email, 
+      password, 
+      name, 
+      dateOfBirth, 
+      phone, 
+      buildingCode, 
+      buildingId, 
+      proofDocument,
+      latitude,
+      longitude
+    } = userData;
 
     console.log('[Auth Service] Starting registration for:', email);
 
@@ -80,17 +90,9 @@ class AuthService {
     }
 
     console.log('[Auth Service] Hashing password');
-    // Hash password with Argon2id
-    const pepper = process.env.PASSWORD_PEPPER;
-    if (!pepper) {
-      console.warn('[Auth Service] PASSWORD_PEPPER not set, using empty string');
-    }
-    const hashedPassword = await argon2.hash(password + (pepper || ''), {
-      type: argon2.argon2id,
-      memoryCost: 2 ** 16, // 64MB
-      timeCost: 3,
-      parallelism: 1,
-    });
+    // Hash password with bcrypt (matching web app)
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     console.log('[Auth Service] Creating user in database');
     // Create user with error handling
@@ -99,37 +101,52 @@ class AuthService {
     // For PRIVATE buildings: status = PENDING_VERIFICATION (needs admin approval)
     let user;
     try {
+      const userData = {
+        email,
+        password: hashedPassword,
+        name,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7c3aed&color=fff`,
+        profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7c3aed&color=fff`,
+        emailVerified: false,
+        phone: phone || null,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        // Building assignment
+        buildingId: requestedBuildingId,
+        // Location data
+        latitude: latitude || null,
+        longitude: longitude || null,
+        // Proof documents
+        governmentIdUrl: proofDocument || null,
+        // Approval status based on building type
+        approvalStatus: buildingApprovalStatus || 'ACTIVE',
+        // Security fields
+        failedLoginAttempts: 0,
+        isActive: true,
+        passwordChangedAt: new Date(),
+      };
+
       user = await db.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          name,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7c3aed&color=fff`,
-          emailVerified: false,
-          phone: phone || null,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-          // Always assign buildingId (building is now required)
-          buildingId: requestedBuildingId,
-          governmentIdUrl: proofDocument || null, // Proof document for building verification
-          // Approval status based on building type
-          approvalStatus: buildingApprovalStatus || 'ACTIVE',
-        },
+        data: userData,
         select: {
           id: true,
           email: true,
           name: true,
           avatar: true,
+          profilePicture: true,
           role: true,
           createdAt: true,
           emailVerified: true,
           buildingId: true,
           approvalStatus: true,
+          phone: true,
+          dateOfBirth: true,
           building: {
             select: {
               id: true,
               name: true,
               address: true,
               city: true,
+              visibilityType: true,
             },
           },
         },
@@ -244,29 +261,28 @@ class AuthService {
       throw new Error(genericError);
     }
 
-    // d. Verify password - try Argon2 first, then bcrypt (for web-registered users)
-    const pepper = process.env.PASSWORD_PEPPER;
+    // d. Verify password with bcrypt
+    // Note: Support both bcrypt ($2a$, $2b$) and argon2 ($argon2) hashes for backward compatibility
     let isPasswordValid = false;
-    let isWebUser = false; // Track if user was registered via web (bcrypt)
     
-    // Try Argon2id first (mobile app registration)
+    console.log('[Auth Service] Password hash prefix:', user.password?.substring(0, 10));
+    
     try {
-      isPasswordValid = await argon2.verify(user.password, password + (pepper || ''));
-    } catch (argonError) {
-      // Argon2 verification failed, might be bcrypt hash
-      isPasswordValid = false;
-    }
-    
-    // If Argon2 failed, try bcrypt (web app registration)
-    if (!isPasswordValid) {
-      try {
-        isPasswordValid = await bcrypt.compare(password, user.password);
-        if (isPasswordValid) {
-          isWebUser = true; // User was registered via web with bcrypt
-        }
-      } catch (bcryptError) {
-        isPasswordValid = false;
+      if (user.password.startsWith('$argon2')) {
+        // Legacy argon2 hash - need to migrate
+        // For now, reject and ask user to reset password
+        console.log('[Auth Service] User has argon2 password hash - needs migration');
+        throw new Error('Please reset your password to continue. Use "Forgot Password" option.');
       }
+      
+      isPasswordValid = await bcrypt.compare(password, user.password);
+      console.log('[Auth Service] Password comparison result:', isPasswordValid);
+    } catch (bcryptError) {
+      if (bcryptError.message.includes('reset your password')) {
+        throw bcryptError; // Re-throw password migration error
+      }
+      console.error('[Auth Service] Password verification error:', bcryptError);
+      isPasswordValid = false;
     }
 
     if (!isPasswordValid) {
@@ -292,9 +308,8 @@ class AuthService {
       throw new Error(genericError);
     }
 
-    // b. If not verified → reject (only for mobile-registered users, not web users)
-    // Web users (bcrypt) don't have email verification, so skip this check for them
-    if (!isWebUser && user.emailVerified === false) {
+    // b. If not verified → reject
+    if (user.emailVerified === false) {
       throw new Error(genericError);
     }
 
@@ -334,21 +349,49 @@ class AuthService {
         name: true,
         avatar: true,
         profilePicture: true,
+        phone: true,
         role: true,
+        bio: true,
         createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
         emailVerified: true,
         dateOfBirth: true,
+        // Building relationship
         buildingId: true,
         approvalStatus: true,
-        governmentIdUrl: true,
+        approvedAt: true,
         rejectedReason: true,
+        // Location
+        latitude: true,
+        longitude: true,
+        // Documents
+        governmentIdUrl: true,
+        resumeUrl: true,
+        certificatesUrl: true,
+        // Teacher-specific fields
+        specializations: true,
+        yearsOfExperience: true,
+        academyId: true,
+        isActive: true,
         building: {
           select: {
             id: true,
             name: true,
             address: true,
             city: true,
+            state: true,
+            zipCode: true,
             registrationCode: true,
+            visibilityType: true,
+          },
+        },
+        academy: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
           },
         },
       },
@@ -385,14 +428,44 @@ class AuthService {
   }
 
   async updateProfile(userId, updates) {
-    const { name, avatar, profilePicture, bio, email } = updates;
+    const { 
+      name, 
+      avatar, 
+      profilePicture, 
+      bio, 
+      email, 
+      phone,
+      dateOfBirth,
+      governmentIdUrl,
+      latitude,
+      longitude,
+      specializations,
+      yearsOfExperience,
+      resumeUrl,
+      certificatesUrl
+    } = updates;
 
-    // Build update data - handle both avatar and profilePicture
+    // Build update data - handle all user fields that exist in Prisma schema
     const updateData = {};
     
     if (name) updateData.name = name;
     if (bio !== undefined) updateData.bio = bio;
     if (email) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (dateOfBirth) updateData.dateOfBirth = new Date(dateOfBirth);
+    
+    // Location
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
+    
+    // Documents
+    if (governmentIdUrl !== undefined) updateData.governmentIdUrl = governmentIdUrl;
+    if (resumeUrl !== undefined) updateData.resumeUrl = resumeUrl;
+    if (certificatesUrl !== undefined) updateData.certificatesUrl = certificatesUrl;
+    
+    // Teacher-specific fields
+    if (specializations !== undefined) updateData.specializations = specializations;
+    if (yearsOfExperience !== undefined) updateData.yearsOfExperience = yearsOfExperience;
     
     // Handle profile picture - sync both fields
     if (profilePicture) {
@@ -413,7 +486,13 @@ class AuthService {
         avatar: true,
         profilePicture: true,
         bio: true,
+        phone: true,
         role: true,
+        dateOfBirth: true,
+        latitude: true,
+        longitude: true,
+        specializations: true,
+        yearsOfExperience: true,
       },
     });
 
@@ -664,14 +743,9 @@ class AuthService {
       throw new Error('Password must contain at least one special character');
     }
 
-    // Hash new password with Argon2id
-    const pepper = process.env.PASSWORD_PEPPER;
-    const hashedPassword = await argon2.hash(newPassword + (pepper || ''), {
-      type: argon2.argon2id,
-      memoryCost: 2 ** 16, // 64MB
-      timeCost: 3,
-      parallelism: 1,
-    });
+    // Hash new password with bcrypt
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
     // Update password and clear reset token fields
     await db.user.update({
@@ -684,6 +758,8 @@ class AuthService {
         failedLoginAttempts: 0,
         isLockedUntil: null,
         lastFailedLogin: null,
+        // Update password changed timestamp
+        passwordChangedAt: new Date(),
       },
     });
 
@@ -716,24 +792,14 @@ class AuthService {
       throw new Error('User not found');
     }
 
-    // Verify current password - try Argon2 first, then bcrypt
-    const pepper = process.env.PASSWORD_PEPPER;
+    // Verify current password with bcrypt
     let isPasswordValid = false;
     
-    // Try Argon2id first (mobile app registration)
     try {
-      isPasswordValid = await argon2.verify(user.password, currentPassword + (pepper || ''));
-    } catch (argonError) {
+      isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    } catch (bcryptError) {
+      console.error('[Auth Service] Password verification error:', bcryptError);
       isPasswordValid = false;
-    }
-    
-    // If Argon2 failed, try bcrypt (web app registration)
-    if (!isPasswordValid) {
-      try {
-        isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-      } catch (bcryptError) {
-        isPasswordValid = false;
-      }
     }
 
     if (!isPasswordValid) {
@@ -757,19 +823,16 @@ class AuthService {
       throw new Error('Password must contain at least one special character');
     }
 
-    // Hash new password with Argon2id
-    const hashedPassword = await argon2.hash(newPassword + (pepper || ''), {
-      type: argon2.argon2id,
-      memoryCost: 2 ** 16,
-      timeCost: 3,
-      parallelism: 1,
-    });
+    // Hash new password with bcrypt
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password
+    // Update password and timestamp
     await db.user.update({
       where: { id: userId },
       data: {
         password: hashedPassword,
+        passwordChangedAt: new Date(),
       },
     });
 

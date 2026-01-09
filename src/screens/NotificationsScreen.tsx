@@ -7,6 +7,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +23,11 @@ import { formatDistanceToNow } from '../utils/helpers';
 import { Text as DSText } from '../components/ui';
 import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
 
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const NotificationsScreen: React.FC = () => {
@@ -28,6 +36,7 @@ const NotificationsScreen: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { isDark } = useThemeStore();
   const theme = getTheme(isDark);
 
@@ -117,14 +126,25 @@ const NotificationsScreen: React.FC = () => {
 
   const styles = createStyles(theme, isDark);
 
+  const handleToggleExpand = (notificationId: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedId(prev => prev === notificationId ? null : notificationId);
+    // Also mark as read when expanding
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification && !notification.isRead) {
+      handleMarkAsRead(notificationId);
+    }
+  };
+
   const renderNotification = ({ item }: { item: Notification }) => {
     const iconName = getNotificationIcon(item.type);
     const iconColor = getNotificationColor(item.type);
+    const isExpanded = expandedId === item.id;
 
     return (
       <TouchableOpacity
         style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
-        onPress={() => handleMarkAsRead(item.id)}
+        onPress={() => handleToggleExpand(item.id)}
         onLongPress={() => handleDelete(item.id)}
         activeOpacity={0.7}
       >
@@ -133,11 +153,40 @@ const NotificationsScreen: React.FC = () => {
         </View>
         <View style={styles.contentContainer}>
           <View style={styles.headerRow}>
-            <DSText variant="label" numberOfLines={1} style={{ flex: 1, color: theme.text }}>{item.title}</DSText>
-            {!item.isRead && <View style={styles.unreadDot} />}
+            <DSText variant="label" numberOfLines={isExpanded ? undefined : 1} style={{ flex: 1, color: theme.text }}>{item.title}</DSText>
+            <View style={styles.headerIcons}>
+              {!item.isRead && <View style={styles.unreadDot} />}
+              <Ionicons 
+                name={isExpanded ? "chevron-up" : "chevron-down"} 
+                size={16} 
+                color={theme.textMuted} 
+                style={{ marginLeft: SPACING.xs }}
+              />
+            </View>
           </View>
-          <DSText variant="bodySmall" numberOfLines={2} style={{ color: theme.textSecondary, marginBottom: SPACING.xxs }}>{item.message}</DSText>
-          <DSText variant="caption" style={{ color: theme.textMuted }}>{formatDistanceToNow(item.createdAt)}</DSText>
+          <DSText 
+            variant="bodySmall" 
+            numberOfLines={isExpanded ? undefined : 2} 
+            style={[
+              styles.messageText,
+              { color: theme.textSecondary },
+              isExpanded && styles.expandedMessage
+            ]}
+          >
+            {item.message}
+          </DSText>
+          <View style={styles.footerRow}>
+            <DSText variant="caption" style={{ color: theme.textMuted }}>{formatDistanceToNow(item.createdAt)}</DSText>
+            {isExpanded && (
+              <TouchableOpacity 
+                style={[styles.deleteButton, { backgroundColor: theme.error + '15' }]}
+                onPress={() => handleDelete(item.id)}
+              >
+                <Ionicons name="trash-outline" size={14} color={theme.error} />
+                <DSText variant="caption" style={{ color: theme.error, marginLeft: 4 }}>Delete</DSText>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -245,12 +294,34 @@ const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.xxs,
   },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   unreadDot: {
     width: SPACING.xs,
     height: SPACING.xs,
     borderRadius: SPACING.xxs,
     backgroundColor: theme.primary,
-    marginLeft: SPACING.xs,
+  },
+  messageText: {
+    marginBottom: SPACING.xxs,
+  },
+  expandedMessage: {
+    marginBottom: SPACING.sm,
+    lineHeight: 20,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xxs,
+    borderRadius: RADIUS.sm,
   },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACING.xxl },
   emptyIconContainer: {

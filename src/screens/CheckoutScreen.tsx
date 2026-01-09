@@ -62,6 +62,7 @@ const CheckoutScreen = () => {
     title: pack.title,
     price: pack.price,
     thumbnailUrl: pack.thumbnailUrl,
+    quantity: 1,
     teacher: { name: pack.teacher.name },
   }] : cartItems);
 

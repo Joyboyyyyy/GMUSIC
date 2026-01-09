@@ -1,17 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-} from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
-import { Text } from './ui';
-import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
+import { useThemeStore, getTheme } from '../store/themeStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -22,127 +16,99 @@ interface FloatingCartBarProps {
 const FloatingCartBar: React.FC<FloatingCartBarProps> = ({ visible = true }) => {
   const navigation = useNavigation<NavigationProp>();
   const { getTotalPrice, getTotalItems } = useCartStore();
+  const { isDark } = useThemeStore();
+  const theme = getTheme(isDark);
+
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
-  
-  const slideAnim = useRef(new Animated.Value(100)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  useEffect(() => {
-    if (totalItems > 0 && visible) {
-      // Slide up and scale in
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 10,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 10,
-        }),
-      ]).start();
-    } else {
-      // Slide down and scale out
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 100,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [totalItems, visible]);
+  if (totalItems === 0 || !visible) return null;
 
-  if (totalItems === 0) {
-    return null;
-  }
+  const styles = createStyles(theme);
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim },
-          ],
-        },
-      ]}
-    >
-      <TouchableOpacity
-        style={styles.bar}
-        onPress={() => navigation.navigate('Cart')}
-        activeOpacity={0.95}
-      >
+    <Animated.View style={styles.container}>
+      <View style={styles.content}>
         <View style={styles.leftSection}>
-          <View style={styles.itemCountBadge}>
-            <Text variant="label" style={{ color: '#7c3aed', fontWeight: '800' }}>{totalItems}</Text>
+          <View style={styles.itemCount}>
+            <Text style={styles.itemCountText}>{totalItems}</Text>
           </View>
-          <View style={styles.textContainer}>
-            <Text variant="caption" style={{ color: 'rgba(255,255,255,0.8)' }}>
-              {totalItems} {totalItems === 1 ? 'item' : 'items'}
-            </Text>
-            <Text variant="label" style={{ color: '#fff', fontWeight: '700' }}>₹{totalPrice.toLocaleString()}</Text>
+          <View style={styles.priceSection}>
+            <Text style={styles.priceLabel}>₹{totalPrice.toLocaleString()}</Text>
+            <Text style={styles.plusTaxes}>plus taxes</Text>
           </View>
         </View>
-        
-        <View style={styles.rightSection}>
-          <Text variant="label" style={{ color: '#fff', fontWeight: '700' }}>View Cart</Text>
-          <Ionicons name="arrow-forward" size={COMPONENT_SIZES.icon.xs} color="#fff" />
-        </View>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.viewCartButton} 
+          onPress={() => navigation.navigate('Cart')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.viewCartText}>View Cart</Text>
+          <Ionicons name="arrow-forward" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 90, // Above tab bar
-    left: 84,
-    right: 84,
-    zIndex: 1000,
+    bottom: 70,
+    left: 16,
+    right: 16,
+    backgroundColor: theme.primary,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  bar: {
-    backgroundColor: '#7c3aed',
-    borderRadius: RADIUS.md,
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    ...SHADOWS.xl,
-    shadowColor: '#7c3aed',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: 12,
   },
-  itemCountBadge: {
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.xs,
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: SPACING.xxs,
-    minWidth: SPACING.xl,
-    alignItems: 'center',
+  itemCount: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  textContainer: {
-    gap: SPACING.xxs,
+  itemCountText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
-  rightSection: {
+  priceSection: {
+    flexDirection: 'column',
+  },
+  priceLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  plusTaxes: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+  },
+  viewCartButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xxs,
+    gap: 6,
+  },
+  viewCartText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

@@ -52,6 +52,17 @@ router.get('/nearby', async (req, res) => {
   }
 });
 
+// Get buildings with music rooms (for jamming room booking)
+router.get('/with-music-rooms', async (req, res) => {
+  try {
+    const buildings = await buildingService.getBuildingsWithMusicRooms();
+    res.json({ success: true, data: buildings });
+  } catch (error) {
+    console.error('[Building Routes] Error getting buildings with music rooms:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Validate building code (no auth required)
 router.get('/validate-code/:code', async (req, res) => {
   try {
@@ -81,6 +92,17 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Get all buildings for browsing (authenticated users)
+router.get('/all', authenticate, async (req, res) => {
+  try {
+    const buildings = await buildingService.getAllBuildingsForBrowsing();
+    res.json({ success: true, data: buildings });
+  } catch (error) {
+    console.error('[Building Routes] Error getting all buildings:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get user's building with courses - MUST be before /:id to avoid matching 'my-building' as an ID
 router.get('/my-building/courses', authenticate, async (req, res) => {
   try {
@@ -93,6 +115,15 @@ router.get('/my-building/courses', authenticate, async (req, res) => {
       return res.status(404).json({ 
         success: false, 
         error: 'No building associated with your account' 
+      });
+    }
+    
+    // Check if user is approved for this building
+    if (user.approvalStatus !== 'ACTIVE') {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Your building access is pending approval',
+        approvalStatus: user.approvalStatus
       });
     }
     
@@ -186,6 +217,109 @@ router.post('/:id/reject', authenticate, async (req, res) => {
     res.json({ success: true, data: building });
   } catch (error) {
     console.error('[Building Routes] Error rejecting building:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Request access to a private building
+router.post('/:buildingId/request-access', authenticate, async (req, res) => {
+  try {
+    const { buildingId } = req.params;
+    const userId = req.user.id;
+    const { residenceAddress, residenceFlatNo, residenceFloor, residenceProofType, residenceProofUrl } = req.body;
+    
+    const result = await buildingService.requestBuildingAccess(userId, buildingId, {
+      residenceAddress,
+      residenceFlatNo,
+      residenceFloor,
+      residenceProofType,
+      residenceProofUrl,
+    });
+    
+    // Notify building admins about the new access request
+    const notificationService = (await import('../services/notification.service.js')).default;
+    await notificationService.notifyBuildingAdminsNewEnrollment(
+      buildingId,
+      `New building access request from ${req.user.name || req.user.email}`,
+      'BUILDING_ACCESS_REQUEST'
+    );
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Building Routes] Error requesting building access:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Get pending building access requests (building admin only)
+router.get('/:buildingId/access-requests', authenticate, async (req, res) => {
+  try {
+    const { buildingId } = req.params;
+    
+    // Check if user is building admin for this building
+    if (req.user.role !== 'BUILDING_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    if (req.user.role === 'BUILDING_ADMIN' && req.user.buildingId !== buildingId) {
+      return res.status(403).json({ success: false, error: 'You can only view requests for your building' });
+    }
+    
+    const requests = await buildingService.getPendingBuildingAccessRequests(buildingId);
+    res.json({ success: true, data: requests });
+  } catch (error) {
+    console.error('[Building Routes] Error getting access requests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Approve building access request (building admin only)
+router.post('/access-requests/:userId/approve', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'BUILDING_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    const result = await buildingService.approveBuildingAccessRequest(req.params.userId, req.user.id);
+    
+    // Notify user about approval
+    const notificationService = (await import('../services/notification.service.js')).default;
+    await notificationService.createNotification(
+      req.params.userId,
+      'Building Access Approved',
+      'Your building access request has been approved. You can now access building courses.',
+      'BUILDING_ACCESS_APPROVED'
+    );
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Building Routes] Error approving access request:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Reject building access request (building admin only)
+router.post('/access-requests/:userId/reject', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'BUILDING_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    const { reason } = req.body;
+    const result = await buildingService.rejectBuildingAccessRequest(req.params.userId, req.user.id, reason);
+    
+    // Notify user about rejection
+    const notificationService = (await import('../services/notification.service.js')).default;
+    await notificationService.createNotification(
+      req.params.userId,
+      'Building Access Rejected',
+      reason || 'Your building access request has been rejected.',
+      'BUILDING_ACCESS_REJECTED'
+    );
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Building Routes] Error rejecting access request:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });

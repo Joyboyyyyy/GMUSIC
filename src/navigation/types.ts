@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   Chat: { mentorName: string; packTitle: string; packId: string };
   PaymentSuccess: { packId?: string; packIds?: string[] };
+  PaymentInvoices: undefined;
   EmailVerify: { token?: string };
   EmailVerified: { error?: string; authToken?: string } | undefined;
   SelectBuilding: undefined;

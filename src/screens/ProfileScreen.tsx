@@ -19,8 +19,8 @@ import { useThemeStore, getTheme } from '../store/themeStore';
 import ProtectedScreen from '../components/ProtectedScreen';
 import NotificationBell from '../components/NotificationBell';
 import CartIcon from '../components/CartIcon';
-import { Text, Card, Container, Row, Spacer } from '../components/ui';
-import { SPACING, COMPONENT_SIZES, RADIUS, SHADOWS } from '../theme/designSystem';
+import { Text, Card, Row, Spacer } from '../components/ui';
+import { SPACING, COMPONENT_SIZES, RADIUS } from '../theme/designSystem';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,7 +41,7 @@ const ProfileScreen = () => {
   const menuItems = [
     { icon: 'person-outline', title: 'Edit Profile', subtitle: 'Update your personal information', onPress: () => navigation.navigate('EditProfile') },
     { icon: 'library-outline', title: 'My Library', subtitle: 'View your purchased lessons', onPress: () => navigation.navigate('Library') },
-    { icon: 'card-outline', title: 'Payment Methods', subtitle: 'Manage your payment options', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
+    { icon: 'receipt-outline', title: 'Payment Invoices', subtitle: 'View your purchase history', onPress: () => navigation.navigate('PaymentInvoices' as any) },
     { icon: 'notifications-outline', title: 'Notifications', subtitle: 'View your notifications', onPress: () => navigation.navigate('Notifications') },
     { icon: 'shield-checkmark-outline', title: 'Privacy & Security', subtitle: 'Manage your privacy settings', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
     { icon: 'lock-closed-outline', title: 'Change Password', subtitle: 'Update your account password', onPress: () => navigation.navigate('ChangePassword') },
@@ -110,6 +110,53 @@ const ProfileScreen = () => {
             </Row>
           </Card>
 
+          {/* Buildings Section */}
+          <Card style={styles.buildingsContainer} elevation="sm">
+            <TouchableOpacity 
+              style={styles.buildingsHeader}
+              onPress={() => navigation.navigate('AllBuildings')}
+            >
+              <Row style={{ alignItems: 'center', flex: 1 }}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="business-outline" size={COMPONENT_SIZES.icon.sm} color={theme.primary} />
+                </View>
+                <View style={styles.menuTextContainer}>
+                  <Text variant="label" style={{ color: theme.text }}>Buildings</Text>
+                  <Text variant="caption" style={{ color: theme.textMuted }}>
+                    {user?.building ? `Member of ${user.building.name}` : 'Browse and join buildings'}
+                  </Text>
+                </View>
+              </Row>
+              <Ionicons name="chevron-forward" size={COMPONENT_SIZES.icon.sm} color={theme.textMuted} />
+            </TouchableOpacity>
+            
+            {/* Current Building Status */}
+            {user?.building && (
+              <View style={styles.currentBuildingInfo}>
+                <View style={[styles.statusIndicator, { backgroundColor: theme.success + '20' }]}>
+                  <Ionicons name="checkmark-circle" size={14} color={theme.success} />
+                  <Text variant="captionSmall" style={{ color: theme.success, marginLeft: 4 }}>Active Member</Text>
+                </View>
+                <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>
+                  {user.building.city}
+                </Text>
+              </View>
+            )}
+            
+            {/* Pending Request Status */}
+            {user?.requestedBuildingId && !user?.building && (
+              <View style={styles.currentBuildingInfo}>
+                <View style={[styles.statusIndicator, { backgroundColor: theme.warning + '20' }]}>
+                  <Ionicons name="time-outline" size={14} color={theme.warning} />
+                  <Text variant="captionSmall" style={{ color: theme.warning, marginLeft: 4 }}>Request Pending</Text>
+                </View>
+                <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>
+                  Awaiting approval from building admin
+                </Text>
+              </View>
+            )}
+          </Card>
+
           {/* Menu Items */}
           <Card style={styles.menuContainer} elevation="sm" noPadding>
             {menuItems.map((item, index) => (
@@ -151,6 +198,10 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   statItem: { flex: 1, alignItems: 'center' },
   divider: { width: 1, backgroundColor: theme.border },
   themeContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: SPACING.md },
+  buildingsContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: 0, overflow: 'hidden' },
+  buildingsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md },
+  currentBuildingInfo: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.md, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: SPACING.sm },
+  statusIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.xs, paddingVertical: 2, borderRadius: RADIUS.xs, alignSelf: 'flex-start' },
   menuContainer: { marginHorizontal: SPACING.screenPadding, borderRadius: RADIUS.md, overflow: 'hidden', marginBottom: SPACING.md },
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: theme.border },
   iconContainer: { width: COMPONENT_SIZES.touchTarget.md, height: COMPONENT_SIZES.touchTarget.md, borderRadius: COMPONENT_SIZES.touchTarget.md / 2, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },

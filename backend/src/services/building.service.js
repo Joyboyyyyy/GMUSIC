@@ -252,6 +252,55 @@ class BuildingService {
     return buildings;
   }
 
+  // Get buildings that have music rooms available for booking
+  async getBuildingsWithMusicRooms() {
+    const buildings = await db.building.findMany({
+      where: {
+        isActive: true,
+        approvalStatus: 'ACTIVE',
+        musicRooms: {
+          some: {
+            isActive: true,
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        address: true,
+        state: true,
+        latitude: true,
+        longitude: true,
+        visibilityType: true,
+        musicRoomCount: true,
+        contactPhone: true,
+        _count: { 
+          select: { 
+            musicRooms: { where: { isActive: true } },
+            courses: true,
+          } 
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return buildings.map(b => ({
+      id: b.id,
+      name: b.name,
+      city: b.city,
+      address: b.address,
+      state: b.state,
+      latitude: b.latitude,
+      longitude: b.longitude,
+      visibilityType: b.visibilityType,
+      musicRoomCount: b._count.musicRooms || b.musicRoomCount,
+      contactPhone: b.contactPhone,
+      courseCount: b._count.courses,
+      isActive: true,
+    }));
+  }
+
   // Get building with courses for user's building
   async getBuildingWithCourses(buildingId) {
     const building = await db.building.findUnique({
@@ -336,6 +385,9 @@ class BuildingService {
         buildingId: true,
         approvalStatus: true,
         rejectedReason: true,
+        requestedBuildingId: true,
+        buildingApprovalStatus: true,
+        buildingRejectedReason: true,
         building: {
           select: {
             id: true,
@@ -345,11 +397,209 @@ class BuildingService {
             registrationCode: true,
           },
         },
+        requestedBuilding: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
+          },
+        },
       },
     });
 
     return user;
   }
+
+  // Get all buildings for browsing (public + private)
+  async getAllBuildingsForBrowsing() {
+    const buildings = await db.building.findMany({
+      where: {
+        isActive: true,
+        approvalStatus: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        address: true,
+        state: true,
+        latitude: true,
+        longitude: true,
+        visibilityType: true,
+        musicRoomCount: true,
+        contactPhone: true,
+        _count: { select: { courses: true, users: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return buildings.map(b => ({
+      id: b.id,
+      name: b.name,
+      city: b.city,
+      address: b.address,
+      state: b.state,
+      latitude: b.latitude,
+      longitude: b.longitude,
+      visibilityType: b.visibilityType,
+      musicRoomCount: b.musicRoomCount,
+      contactPhone: b.contactPhone,
+      courseCount: b._count.courses,
+      userCount: b._count.users,
+    }));
+  }
+
+  // Request access to a private building
+  async requestBuildingAccess(userId, buildingId, residenceData = {}) {
+    // Check if building exists and is private
+    const building = await db.building.findUnique({
+      where: { id: buildingId },
+      select: {
+        id: true,
+        name: true,
+        visibilityType: true,
+        approvalStatus: true,
+      },
+    });
+
+    if (!building) {
+      throw new Error('Building not found');
+    }
+
+    if (building.approvalStatus !== 'ACTIVE') {
+      throw new Error('Building is not active');
+    }
+
+    // Check if user already has a pending request or is already a member
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        buildingId: true,
+        requestedBuildingId: true,
+        buildingApprovalStatus: true,
+      },
+    });
+
+    if (user.buildingId === buildingId) {
+      throw new Error('You are already a member of this building');
+    }
+
+    if (user.requestedBuildingId === buildingId && user.buildingApprovalStatus === 'PENDING_VERIFICATION') {
+      throw new Error('You already have a pending request for this building');
+    }
+
+    // Update user with building access request
+    const updatedUser = await db.user.update({
+      where: { id: userId },
+      data: {
+        requestedBuildingId: buildingId,
+        buildingApprovalStatus: 'PENDING_VERIFICATION',
+        buildingRejectedReason: null,
+        residenceAddress: residenceData.residenceAddress || null,
+        residenceFlatNo: residenceData.residenceFlatNo || null,
+        residenceFloor: residenceData.residenceFloor || null,
+        residenceProofType: residenceData.residenceProofType || null,
+        residenceProofUrl: residenceData.residenceProofUrl || null,
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      message: building.visibilityType === 'PRIVATE' 
+        ? 'Access request submitted. Awaiting building admin approval.'
+        : 'Access request submitted.',
+      buildingName: building.name,
+    };
+  }
+
+  // Get pending building access requests (for building admins)
+  async getPendingBuildingAccessRequests(buildingId) {
+    const requests = await db.user.findMany({
+      where: {
+        requestedBuildingId: buildingId,
+        buildingApprovalStatus: 'PENDING_VERIFICATION',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        residenceAddress: true,
+        residenceFlatNo: true,
+        residenceFloor: true,
+        residenceProofType: true,
+        residenceProofUrl: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return requests;
+  }
+
+  // Approve building access request
+  async approveBuildingAccessRequest(userId, approvedById) {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        requestedBuildingId: true,
+        buildingApprovalStatus: true,
+      },
+    });
+
+    if (!user || !user.requestedBuildingId) {
+      throw new Error('No pending building access request found');
+    }
+
+    if (user.buildingApprovalStatus !== 'PENDING_VERIFICATION') {
+      throw new Error('Request is not pending');
+    }
+
+    const updatedUser = await db.user.update({
+      where: { id: userId },
+      data: {
+        buildingId: user.requestedBuildingId,
+        buildingApprovalStatus: 'ACTIVE',
+        buildingApprovedAt: new Date(),
+        buildingApprovedBy: approvedById,
+        approvalStatus: 'ACTIVE', // Also activate user if pending
+        requestedBuildingId: null, // Clear the request
+        updatedAt: new Date(),
+      },
+    });
+
+    return updatedUser;
+  }
+
+  // Reject building access request
+  async rejectBuildingAccessRequest(userId, rejectedById, reason) {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        requestedBuildingId: true,
+        buildingApprovalStatus: true,
+      },
+    });
+
+    if (!user || !user.requestedBuildingId) {
+      throw new Error('No pending building access request found');
+    }
+
+    const updatedUser = await db.user.update({
+      where: { id: userId },
+      data: {
+        buildingApprovalStatus: 'REJECTED',
+        buildingRejectedReason: reason || 'Request rejected by building admin',
+        requestedBuildingId: null, // Clear the request
+        updatedAt: new Date(),
+      },
+    });
+
+    return updatedUser;
+  }
 }
+
 
 export default new BuildingService();

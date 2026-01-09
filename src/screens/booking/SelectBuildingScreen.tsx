@@ -7,10 +7,18 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useBookingStore } from '../../store/bookingStore';
 import { useThemeStore, getTheme } from '../../store/themeStore';
+import { SPACING, RADIUS, COMPONENT_SIZES } from '../../theme/designSystem';
 import api from '../../utils/api';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-interface Building { id: string; name: string; isActive: boolean; }
+interface Building { 
+  id: string; 
+  name: string; 
+  city?: string;
+  address?: string;
+  musicRoomCount?: number;
+  isActive: boolean; 
+}
 
 const SelectBuildingScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -27,29 +35,68 @@ const SelectBuildingScreen = () => {
   const loadBuildings = async () => {
     try {
       setLoading(true); setError(false);
-      const response = await api.get('/api/buildings');
-      const activeBuildings = response.data.filter((building: Building) => building.isActive === true);
+      // Fetch buildings that have music rooms available for booking
+      const response = await api.get('/api/buildings/with-music-rooms');
+      const buildingsData = response.data?.data || response.data || [];
+      const activeBuildings = buildingsData.filter((building: Building) => building.isActive !== false);
       setBuildings(activeBuildings);
     } catch (err: any) {
       console.error('[SelectBuildingScreen] Error loading buildings:', err);
-      setError(true);
-      Alert.alert('Error', 'Failed to load buildings. Please try again later.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      // Fallback to regular buildings endpoint
+      try {
+        const fallbackResponse = await api.get('/api/buildings/public');
+        const fallbackData = fallbackResponse.data?.data || fallbackResponse.data || [];
+        setBuildings(fallbackData.filter((b: Building) => b.isActive !== false));
+      } catch (fallbackErr) {
+        setError(true);
+        Alert.alert('Error', 'Failed to load buildings. Please try again later.');
+      }
     } finally { setLoading(false); }
   };
 
-  const handleBuildingSelect = (buildingId: string) => { setSelectedBuilding(buildingId); setBuildingId(buildingId); };
-  const handleContinue = () => { if (selectedBuilding) navigation.navigate('SelectSlot', { buildingId: selectedBuilding }); };
+  const handleBuildingSelect = (buildingId: string) => { 
+    setSelectedBuilding(buildingId); 
+    setBuildingId(buildingId); 
+  };
+  
+  const handleContinue = () => { 
+    if (selectedBuilding) navigation.navigate('SelectSlot', { buildingId: selectedBuilding }); 
+  };
 
   const styles = createStyles(theme, isDark);
 
   const renderBuilding = ({ item }: { item: Building }) => {
     const isSelected = selectedBuilding === item.id;
     return (
-      <TouchableOpacity style={[styles.buildingCard, isSelected && styles.buildingCardSelected]} onPress={() => handleBuildingSelect(item.id)}>
+      <TouchableOpacity 
+        style={[styles.buildingCard, isSelected && styles.buildingCardSelected]} 
+        onPress={() => handleBuildingSelect(item.id)}
+        activeOpacity={0.7}
+      >
         <View style={styles.buildingHeader}>
-          <View style={styles.buildingIcon}><Ionicons name="business-outline" size={24} color={theme.primary} /></View>
-          <View style={styles.buildingInfo}><Text style={styles.buildingName}>{item.name}</Text></View>
-          {isSelected && <View style={styles.checkIcon}><Ionicons name="checkmark-circle" size={24} color={theme.primary} /></View>}
+          <View style={styles.buildingIcon}>
+            <Ionicons name="business" size={COMPONENT_SIZES.icon.md} color={theme.primary} />
+          </View>
+          <View style={styles.buildingInfo}>
+            <Text style={styles.buildingName}>{item.name}</Text>
+            {item.city && (
+              <View style={styles.locationRow}>
+                <Ionicons name="location-outline" size={14} color={theme.textSecondary} />
+                <Text style={styles.buildingCity}>{item.city}</Text>
+              </View>
+            )}
+            {item.musicRoomCount && item.musicRoomCount > 0 && (
+              <View style={styles.roomBadge}>
+                <Ionicons name="musical-notes-outline" size={12} color={theme.success} />
+                <Text style={styles.roomBadgeText}>{item.musicRoomCount} Music Room{item.musicRoomCount > 1 ? 's' : ''}</Text>
+              </View>
+            )}
+          </View>
+          {isSelected && (
+            <View style={styles.checkIcon}>
+              <Ionicons name="checkmark-circle" size={COMPONENT_SIZES.icon.md} color={theme.primary} />
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -59,7 +106,7 @@ const SelectBuildingScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="arrow-back" size={COMPONENT_SIZES.icon.md} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Building</Text>
         <View style={styles.backButton} />
@@ -67,7 +114,7 @@ const SelectBuildingScreen = () => {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Text style={styles.subtitle}>Choose a building to see available rooms</Text>
+          <Text style={styles.subtitle}>Choose a building with available jamming rooms</Text>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.primary} />
@@ -75,19 +122,27 @@ const SelectBuildingScreen = () => {
             </View>
           ) : error ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="alert-circle-outline" size={64} color={theme.error} />
+              <Ionicons name="alert-circle-outline" size={COMPONENT_SIZES.icon.xl} color={theme.error} />
               <Text style={styles.emptyTitle}>Failed to Load Buildings</Text>
               <Text style={styles.emptyText}>Please check your connection and try again.</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={loadBuildings}><Text style={styles.retryButtonText}>Retry</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.retryButton} onPress={loadBuildings}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
           ) : buildings.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="business-outline" size={64} color={theme.textMuted} />
+              <Ionicons name="business-outline" size={COMPONENT_SIZES.icon.xl} color={theme.textMuted} />
               <Text style={styles.emptyTitle}>No Rooms Available</Text>
-              <Text style={styles.emptyText}>No rooms are currently available for booking.</Text>
+              <Text style={styles.emptyText}>No buildings with jamming rooms are currently available for booking.</Text>
             </View>
           ) : (
-            <FlatList data={buildings} keyExtractor={(item) => item.id} renderItem={renderBuilding} scrollEnabled={false} contentContainerStyle={styles.buildingsList} />
+            <FlatList 
+              data={buildings} 
+              keyExtractor={(item) => item.id} 
+              renderItem={renderBuilding} 
+              scrollEnabled={false} 
+              contentContainerStyle={styles.buildingsList} 
+            />
           )}
         </View>
       </ScrollView>
@@ -96,7 +151,7 @@ const SelectBuildingScreen = () => {
         <View style={styles.footer}>
           <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
             <Text style={styles.continueButtonText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+            <Ionicons name="arrow-forward" size={COMPONENT_SIZES.icon.sm} color="#fff" />
           </TouchableOpacity>
         </View>
       )}
@@ -106,29 +161,83 @@ const SelectBuildingScreen = () => {
 
 const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: theme.text },
-  content: { padding: 20 },
-  subtitle: { fontSize: 14, color: theme.textSecondary, marginBottom: 20 },
-  buildingsList: { gap: 12 },
-  buildingCard: { backgroundColor: theme.card, borderRadius: 12, padding: 16, borderWidth: 2, borderColor: theme.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: SPACING.screenPadding, 
+    paddingVertical: SPACING.md, 
+    backgroundColor: theme.card, 
+    borderBottomWidth: 1, 
+    borderBottomColor: theme.border 
+  },
+  backButton: { 
+    width: COMPONENT_SIZES.touchTarget.md, 
+    height: COMPONENT_SIZES.touchTarget.md, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: theme.text },
+  content: { padding: SPACING.screenPadding },
+  subtitle: { fontSize: 14, color: theme.textSecondary, marginBottom: SPACING.lg },
+  buildingsList: { gap: SPACING.sm },
+  buildingCard: { 
+    backgroundColor: theme.card, 
+    borderRadius: RADIUS.md, 
+    padding: SPACING.md, 
+    borderWidth: 2, 
+    borderColor: theme.border, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 1 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 4, 
+    elevation: 2 
+  },
   buildingCardSelected: { borderColor: theme.primary, backgroundColor: isDark ? '#312e81' : '#faf5ff' },
-  buildingHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  buildingIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  buildingHeader: { flexDirection: 'row', alignItems: 'center' },
+  buildingIcon: { 
+    width: 56, 
+    height: 56, 
+    borderRadius: RADIUS.sm, 
+    backgroundColor: theme.primaryLight, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: SPACING.sm 
+  },
   buildingInfo: { flex: 1 },
-  buildingName: { fontSize: 16, fontWeight: 'bold', color: theme.text },
-  checkIcon: { marginLeft: 8 },
-  loadingContainer: { padding: 40, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { marginTop: 12, fontSize: 14, color: theme.textSecondary },
-  emptyContainer: { padding: 40, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: theme.text, marginTop: 16, marginBottom: 8 },
-  emptyText: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginBottom: 24 },
-  retryButton: { backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  buildingName: { fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: SPACING.xxs },
+  locationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.xxs },
+  buildingCity: { fontSize: 13, color: theme.textSecondary, marginLeft: SPACING.xxs },
+  roomBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: isDark ? '#064e3b' : '#d1fae5', 
+    paddingHorizontal: SPACING.xs, 
+    paddingVertical: 2, 
+    borderRadius: RADIUS.xs, 
+    alignSelf: 'flex-start',
+    marginTop: SPACING.xxs,
+  },
+  roomBadgeText: { fontSize: 11, color: theme.success, fontWeight: '600', marginLeft: SPACING.xxs },
+  checkIcon: { marginLeft: SPACING.xs },
+  loadingContainer: { padding: SPACING.xxl, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { marginTop: SPACING.sm, fontSize: 14, color: theme.textSecondary },
+  emptyContainer: { padding: SPACING.xxl, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: theme.text, marginTop: SPACING.md, marginBottom: SPACING.xs },
+  emptyText: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginBottom: SPACING.lg },
+  retryButton: { backgroundColor: theme.primary, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderRadius: RADIUS.sm },
   retryButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  footer: { padding: 20, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border },
-  continueButton: { backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  continueButtonText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  footer: { padding: SPACING.screenPadding, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border },
+  continueButton: { 
+    backgroundColor: theme.primary, 
+    borderRadius: RADIUS.md, 
+    paddingVertical: SPACING.md, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: SPACING.xs 
+  },
+  continueButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });
 
 export default SelectBuildingScreen;

@@ -15,6 +15,7 @@ import NotificationSettingsScreen from '../screens/settings/NotificationSettings
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
 import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
+import PaymentInvoicesScreen from '../screens/PaymentInvoicesScreen';
 import CartScreen from '../screens/CartScreen';
 import EmailVerifyScreen from '../screens/EmailVerifyScreen';
 import EmailVerifiedScreen from '../screens/EmailVerifiedScreen';
@@ -213,6 +214,13 @@ const RootNavigator = () => {
           },
           headerTintColor: '#fff',
           headerLeft: () => null, // Disable back button
+        }}
+      />
+      <Stack.Screen 
+        name="PaymentInvoices" 
+        component={PaymentInvoicesScreen}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen 

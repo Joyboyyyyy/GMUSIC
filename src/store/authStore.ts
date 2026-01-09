@@ -280,8 +280,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
           throw new Error('No user data received from server');
         }
         
-        // Return user object - DO NOT merge or partially update
-        // This is the complete user profile from backend (name, email, avatar, isVerified, etc.)
+        // Update the user in state with fresh data from backend
+        set((state) => ({
+          user: { ...state.user, ...user },
+        }));
+        
+        // Return user object
         return { user };
       } catch (error) {
         console.error('fetchMe error:', error);

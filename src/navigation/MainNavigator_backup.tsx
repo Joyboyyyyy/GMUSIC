@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, ScrollView, Animated, Platform } from 'react-native';
@@ -11,6 +11,7 @@ import HomeScreen from '../screens/HomeScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import BookRoomScreen from '../screens/booking/BookRoomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import CartIcon from '../components/CartIcon';
 import NotificationBell from '../components/NotificationBell';
 import FloatingCartBar from '../components/FloatingCartBar';
 import { buildingApi } from '../services/api.service';
@@ -254,13 +255,13 @@ const NearbyBuildingsScreen: React.FC = () => {
               {userLocation 
                 ? 'Find music buildings near you' 
                 : locationError 
-                  ? `⚠️ ${locationError}` 
+                  ? `âš ï¸ ${locationError}` 
                   : 'Getting your location...'}
             </Text>
           </View>
           <View style={styles.headerIcons}>
             <NotificationBell />
-            
+            <CartIcon />
           </View>
         </View>
 
@@ -300,7 +301,7 @@ const NearbyBuildingsScreen: React.FC = () => {
                     key={building.id}
                     coordinate={coords}
                     title={building.name}
-                    description={`${building.city} • ${building.courses?.length || 0} courses`}
+                    description={`${building.city} â€¢ ${building.courses?.length || 0} courses`}
                     onPress={() => setSelectedBuilding(building)}
                     tracksViewChanges={false}
                   >
@@ -672,3 +673,4 @@ const MainNavigator = () => {
 };
 
 export default MainNavigator;
+

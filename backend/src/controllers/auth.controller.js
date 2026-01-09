@@ -7,8 +7,19 @@ export const register = async (req, res) => {
     console.log('[Auth Controller] Register request body:', JSON.stringify(req.body, null, 2));
     console.log('[Auth Controller] Request headers:', req.headers['content-type']);
     
-    // Destructure from req.body (including building fields)
-    const { email, password, name, dateOfBirth, address, phone, buildingCode, proofDocument } = req.body;
+    // Destructure from req.body (including all user fields)
+    const { 
+      email, 
+      password, 
+      name, 
+      dateOfBirth, 
+      phone, 
+      buildingCode, 
+      buildingId,
+      proofDocument,
+      latitude,
+      longitude
+    } = req.body;
 
     console.log('[Auth Controller] Extracted fields:', { 
       email: email ? 'provided' : 'missing',
@@ -16,9 +27,11 @@ export const register = async (req, res) => {
       name: name ? 'provided' : 'missing',
       phone: phone ? 'provided' : 'not provided',
       dateOfBirth: dateOfBirth ? 'provided' : 'not provided',
-      address: address ? 'provided' : 'not provided',
       buildingCode: buildingCode ? 'provided' : 'not provided',
-      proofDocument: proofDocument ? 'provided (base64)' : 'not provided'
+      buildingId: buildingId ? 'provided' : 'not provided',
+      proofDocument: proofDocument ? 'provided (base64)' : 'not provided',
+      latitude: latitude ? 'provided' : 'not provided',
+      longitude: longitude ? 'provided' : 'not provided'
     });
 
     // Validation guard - return 400 if required fields are missing
@@ -33,10 +46,12 @@ export const register = async (req, res) => {
       password, 
       name, 
       dateOfBirth, 
-      address, 
       phone,
       buildingCode,
-      proofDocument 
+      buildingId,
+      proofDocument,
+      latitude,
+      longitude
     });
 
     console.log('[Auth Controller] Registration successful, returning response');

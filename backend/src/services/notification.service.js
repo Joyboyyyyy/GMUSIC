@@ -161,7 +161,7 @@ class NotificationService {
   // Notify building admins when a user enrolls in a private building
   async notifyBuildingAdminsNewEnrollment(buildingId, userDetails) {
     try {
-      // Find all admins for this building (BUILDING_ADMIN role with matching buildingId)
+      // Find all BUILDING_ADMIN users for this specific building
       const buildingAdmins = await db.user.findMany({
         where: {
           buildingId: buildingId,
@@ -175,29 +175,33 @@ class NotificationService {
         },
       });
 
-      // Also find SUPER_ADMIN and ACADEMY_ADMIN users who might manage this building
-      const superAdmins = await db.user.findMany({
-        where: {
-          role: { in: ['SUPER_ADMIN', 'ACADEMY_ADMIN'] },
-          isActive: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      });
+      // If no building admins found, fallback to super admins only
+      let adminsToNotify = buildingAdmins;
+      
+      if (buildingAdmins.length === 0) {
+        console.log('[NotificationService] No building admins found for building:', buildingId, '- falling back to super admins');
+        const superAdmins = await db.user.findMany({
+          where: {
+            role: 'SUPER_ADMIN',
+            isActive: true,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        });
+        adminsToNotify = superAdmins;
+      }
 
-      const allAdmins = [...buildingAdmins, ...superAdmins];
-
-      if (allAdmins.length === 0) {
-        console.log('[NotificationService] No admins found for building:', buildingId);
+      if (adminsToNotify.length === 0) {
+        console.log('[NotificationService] No admins found at all for building:', buildingId);
         return [];
       }
 
       // Create notification for each admin
       const notifications = await Promise.all(
-        allAdmins.map(admin =>
+        adminsToNotify.map(admin =>
           this.createNotification(
             admin.id,
             'New Building Enrollment Request',
@@ -232,6 +236,30 @@ class NotificationService {
       'approval',
       '/profile',
       JSON.stringify({ buildingName })
+    );
+  }
+
+  // Notify user when their building access is approved
+  async notifyUserBuildingApproved(userId, buildingName) {
+    return this.createNotification(
+      userId,
+      '🎉 Building Access Approved!',
+      `Congratulations! Your request to join ${buildingName} has been approved. You can now access all courses and features.`,
+      'approval',
+      '/home',
+      JSON.stringify({ buildingName, approved: true })
+    );
+  }
+
+  // Notify user when their building access is rejected
+  async notifyUserBuildingRejected(userId, buildingName, reason) {
+    return this.createNotification(
+      userId,
+      'Building Access Update',
+      `Your request to join ${buildingName} was not approved. ${reason ? `Reason: ${reason}` : 'Please contact support for more information.'}`,
+      'approval',
+      '/support',
+      JSON.stringify({ buildingName, rejected: true, reason })
     );
   }
 }

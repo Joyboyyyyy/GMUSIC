@@ -22,6 +22,12 @@ export const buildingApi = {
     return response.data;
   },
 
+  // Get all buildings (public + private for browsing)
+  getAllBuildings: async (): Promise<ApiResponse<Building[]>> => {
+    const response = await api.get('/api/buildings/all');
+    return response.data;
+  },
+
   // Search buildings (no auth required - returns public + private)
   searchBuildings: async (query: string = '', limit: number = 20): Promise<ApiResponse<Building[]>> => {
     const response = await api.get('/api/buildings/search', {
@@ -53,6 +59,24 @@ export const buildingApi = {
   // Get user's building with courses
   getMyBuildingWithCourses: async (): Promise<ApiResponse<Building>> => {
     const response = await api.get('/api/buildings/my-building/courses');
+    return response.data;
+  },
+
+  // Request access to a private building
+  requestBuildingAccess: async (
+    buildingId: string,
+    proofDocumentUrl?: string,
+    residenceData?: {
+      residenceAddress?: string;
+      residenceFlatNo?: string;
+      residenceFloor?: string;
+      residenceProofType?: string;
+    }
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.post(`/api/buildings/${buildingId}/request-access`, {
+      proofDocumentUrl,
+      ...residenceData,
+    });
     return response.data;
   },
 

@@ -275,33 +275,59 @@ class AdminService {
 
   // Get users pending building approval
   async getPendingBuildingApprovals() {
+    // Find users with PENDING_VERIFICATION status who have a building assigned
+    // This covers both new flow (buildingId set) and legacy flow (REQUESTED_BUILDING: in rejectedReason)
     const users = await db.user.findMany({
       where: {
         approvalStatus: 'PENDING_VERIFICATION',
-        rejectedReason: { startsWith: 'REQUESTED_BUILDING:' },
         isActive: true,
+        OR: [
+          { buildingId: { not: null } }, // New flow: buildingId already assigned
+          { rejectedReason: { startsWith: 'REQUESTED_BUILDING:' } }, // Legacy flow
+        ],
       },
       select: {
         id: true,
         email: true,
         name: true,
         phone: true,
+        buildingId: true,
         governmentIdUrl: true,
         rejectedReason: true,
         createdAt: true,
+        building: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            registrationCode: true,
+            visibilityType: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    // Parse and enrich with building info
+    // Enrich with building info for legacy flow users
     const enrichedUsers = await Promise.all(users.map(async (user) => {
+      // If user already has building relation, use it
+      if (user.building) {
+        return {
+          ...user,
+          requestedBuildingId: user.buildingId,
+          requestedBuilding: user.building,
+          proofDocumentUrl: user.governmentIdUrl,
+        };
+      }
+      
+      // Legacy flow: parse building ID from rejectedReason
       const requestedBuildingId = user.rejectedReason?.replace('REQUESTED_BUILDING:', '');
       let building = null;
       
       if (requestedBuildingId) {
         building = await db.building.findUnique({
           where: { id: requestedBuildingId },
-          select: { id: true, name: true, city: true, registrationCode: true },
+          select: { id: true, name: true, city: true, registrationCode: true, visibilityType: true },
         });
       }
       
@@ -324,6 +350,7 @@ class AdminService {
         id: true,
         email: true,
         name: true,
+        buildingId: true,
         rejectedReason: true,
         approvalStatus: true,
       },
@@ -333,16 +360,21 @@ class AdminService {
       throw new Error('User not found');
     }
 
-    // Extract requested building ID from rejectedReason
-    if (!user.rejectedReason?.startsWith('REQUESTED_BUILDING:')) {
+    // Check if user already has a buildingId (new flow) or needs to extract from rejectedReason (legacy)
+    let targetBuildingId = user.buildingId;
+    
+    // Legacy flow: Extract requested building ID from rejectedReason
+    if (!targetBuildingId && user.rejectedReason?.startsWith('REQUESTED_BUILDING:')) {
+      targetBuildingId = user.rejectedReason.replace('REQUESTED_BUILDING:', '');
+    }
+
+    if (!targetBuildingId) {
       throw new Error('User has no pending building request');
     }
 
-    const requestedBuildingId = user.rejectedReason.replace('REQUESTED_BUILDING:', '');
-
     // Verify building exists
     const building = await db.building.findUnique({
-      where: { id: requestedBuildingId },
+      where: { id: targetBuildingId },
       select: { id: true, name: true },
     });
 
@@ -350,13 +382,13 @@ class AdminService {
       throw new Error('Requested building not found');
     }
 
-    // Update user: assign building, clear pending status
+    // Update user: ensure building is assigned, set status to ACTIVE
     const updatedUser = await db.user.update({
       where: { id: userId },
       data: {
-        buildingId: requestedBuildingId,
+        buildingId: targetBuildingId,
         approvalStatus: 'ACTIVE',
-        rejectedReason: null, // Clear the workaround field
+        rejectedReason: null, // Clear any legacy field
         approvedBy: adminId,
         approvedAt: new Date(),
       },
@@ -366,10 +398,25 @@ class AdminService {
         name: true,
         buildingId: true,
         approvalStatus: true,
+        building: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
     console.log(`[Admin] Building access approved for user ${userId} to building ${building.name}`);
+    
+    // Send notification to user
+    try {
+      const notificationService = (await import('./notification.service.js')).default;
+      await notificationService.notifyUserBuildingApproved(userId, building.name);
+    } catch (notifError) {
+      console.error('[Admin] Failed to send approval notification:', notifError);
+    }
+    
     return { user: updatedUser, building };
   }
 
@@ -408,6 +455,328 @@ class AdminService {
 
     console.log(`[Admin] Building access rejected for user ${userId}: ${reason}`);
     return updatedUser;
+  }
+
+  // ============================================
+  // USER MANAGEMENT
+  // ============================================
+
+  // Get all users with filters
+  async getAllUsers(filters = {}) {
+    const { role, approvalStatus, isActive = true, buildingId } = filters;
+    
+    const where = { isActive, deletedAt: null };
+    if (role) where.role = role;
+    if (approvalStatus) where.approvalStatus = approvalStatus;
+    if (buildingId) where.buildingId = buildingId;
+
+    return db.user.findMany({
+      where,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
+        role: true,
+        buildingId: true,
+        academyId: true,
+        approvalStatus: true,
+        emailVerified: true,
+        isActive: true,
+        createdAt: true,
+        lastLoginAt: true,
+        building: { select: { id: true, name: true } },
+        academy: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // Get single user details
+  async getUserById(userId) {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
+        profilePicture: true,
+        role: true,
+        bio: true,
+        dateOfBirth: true,
+        buildingId: true,
+        academyId: true,
+        specializations: true,
+        yearsOfExperience: true,
+        governmentIdUrl: true,
+        resumeUrl: true,
+        certificatesUrl: true,
+        latitude: true,
+        longitude: true,
+        approvalStatus: true,
+        approvedBy: true,
+        approvedAt: true,
+        rejectedReason: true,
+        emailVerified: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        building: { select: { id: true, name: true, address: true } },
+        academy: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user;
+  }
+
+  // Update user role
+  async updateUserRole(userId, newRole, adminId) {
+    const validRoles = ['STUDENT', 'TEACHER', 'BUILDING_ADMIN', 'ACADEMY_ADMIN', 'SUPER_ADMIN'];
+    if (!validRoles.includes(newRole)) {
+      throw new Error('Invalid role');
+    }
+
+    const user = await db.user.update({
+      where: { id: userId },
+      data: { role: newRole },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} role updated to ${newRole} by ${adminId}`);
+    return user;
+  }
+
+  // Soft delete user (deactivate)
+  async deactivateUser(userId, adminId) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isActive: true,
+        deletedAt: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} deactivated by ${adminId}`);
+    return user;
+  }
+
+  // Reactivate user
+  async reactivateUser(userId, adminId) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        isActive: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isActive: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} reactivated by ${adminId}`);
+    return user;
+  }
+
+  // Block user
+  async blockUser(userId, adminId, reason) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        approvalStatus: 'BLOCKED',
+        rejectedReason: reason || 'Account blocked by administrator',
+        approvedBy: adminId,
+        approvedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        approvalStatus: true,
+        rejectedReason: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} blocked by ${adminId}: ${reason}`);
+    return user;
+  }
+
+  // Unblock user
+  async unblockUser(userId, adminId) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        approvalStatus: 'ACTIVE',
+        rejectedReason: null,
+        approvedBy: adminId,
+        approvedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        approvalStatus: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} unblocked by ${adminId}`);
+    return user;
+  }
+
+  // Approve user (for pending verification)
+  async approveUser(userId, adminId) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        approvalStatus: 'ACTIVE',
+        approvedBy: adminId,
+        approvedAt: new Date(),
+        rejectedReason: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        approvalStatus: true,
+        approvedAt: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} approved by ${adminId}`);
+    return user;
+  }
+
+  // Reject user
+  async rejectUser(userId, adminId, reason) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        approvalStatus: 'REJECTED',
+        approvedBy: adminId,
+        approvedAt: new Date(),
+        rejectedReason: reason || 'Application rejected',
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        approvalStatus: true,
+        rejectedReason: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} rejected by ${adminId}: ${reason}`);
+    return user;
+  }
+
+  // Suspend user temporarily
+  async suspendUser(userId, adminId, reason) {
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        approvalStatus: 'SUSPENDED',
+        rejectedReason: reason || 'Account suspended',
+        approvedBy: adminId,
+        approvedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        approvalStatus: true,
+        rejectedReason: true,
+      },
+    });
+
+    console.log(`[Admin] User ${userId} suspended by ${adminId}: ${reason}`);
+    return user;
+  }
+
+  // Assign user to building
+  async assignUserToBuilding(userId, buildingId, adminId) {
+    // Verify building exists
+    const building = await db.building.findUnique({
+      where: { id: buildingId },
+      select: { id: true, name: true },
+    });
+
+    if (!building) {
+      throw new Error('Building not found');
+    }
+
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        buildingId: buildingId,
+        approvalStatus: 'ACTIVE',
+        approvedBy: adminId,
+        approvedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        buildingId: true,
+        building: { select: { id: true, name: true } },
+      },
+    });
+
+    console.log(`[Admin] User ${userId} assigned to building ${building.name} by ${adminId}`);
+    return user;
+  }
+
+  // Assign user to academy (for teachers)
+  async assignUserToAcademy(userId, academyId, adminId) {
+    // Verify academy exists
+    const academy = await db.musicAcademy.findUnique({
+      where: { id: academyId },
+      select: { id: true, name: true },
+    });
+
+    if (!academy) {
+      throw new Error('Academy not found');
+    }
+
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        academyId: academyId,
+        role: 'TEACHER', // Auto-assign teacher role
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        academyId: true,
+        academy: { select: { id: true, name: true } },
+      },
+    });
+
+    console.log(`[Admin] User ${userId} assigned to academy ${academy.name} by ${adminId}`);
+    return user;
   }
 }
 

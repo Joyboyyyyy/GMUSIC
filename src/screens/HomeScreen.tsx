@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { mockTeachers } from '../data/mockData';
@@ -33,7 +33,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuthStore();
+  const { user, fetchMe } = useAuthStore();
   const { courses, fetchCourses, refreshCourses, isLoading } = useCourseStore();
   const { isDark } = useThemeStore();
   const theme = getTheme(isDark);
@@ -44,10 +44,12 @@ const HomeScreen = () => {
   const [publicBuildingsLoading, setPublicBuildingsLoading] = useState(false);
   const [cartBarVisible, setCartBarVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const previousApprovalStatus = useRef(user?.approvalStatus);
 
-  // User has building access if they have a buildingId (from signup with PUBLIC building or admin approval)
-  const hasBuildingAccess = !!user?.buildingId;
-  const isPendingBuildingApproval = user?.approvalStatus === 'PENDING_VERIFICATION' && !user?.buildingId;
+  // User has building access if they have a buildingId AND are approved (ACTIVE status)
+  const hasBuildingAccess = !!user?.buildingId && user?.approvalStatus === 'ACTIVE';
+  // User is pending if they have a buildingId but status is PENDING_VERIFICATION
+  const isPendingBuildingApproval = user?.approvalStatus === 'PENDING_VERIFICATION';
   
   // Debug logging
   useEffect(() => {
@@ -59,6 +61,53 @@ const HomeScreen = () => {
       hasBuildingAccess,
     });
   }, [user, hasBuildingAccess]);
+
+  // Auto-refresh user data when screen comes into focus (to check for approval status changes)
+  useFocusEffect(
+    useCallback(() => {
+      const checkApprovalStatus = async () => {
+        if (user?.id) {
+          try {
+            console.log('[HomeScreen] Checking approval status...');
+            console.log('[HomeScreen] Current status:', user?.approvalStatus);
+            
+            const result = await fetchMe();
+            
+            console.log('[HomeScreen] New status:', result.user.approvalStatus);
+            console.log('[HomeScreen] New buildingId:', result.user.buildingId);
+            
+            // Check if approval status changed from PENDING to ACTIVE
+            if (previousApprovalStatus.current === 'PENDING_VERIFICATION' && 
+                result.user.approvalStatus === 'ACTIVE') {
+              Alert.alert(
+                '🎉 Building Access Approved!',
+                `You now have access to ${result.user.building?.name || 'your building'}. Explore the courses available!`,
+                [{ text: 'Great!', style: 'default' }]
+              );
+              
+              // Refresh building courses immediately after approval
+              if (result.user.buildingId) {
+                setBuildingCoursesLoading(true);
+                try {
+                  const response = await buildingApi.getMyBuildingWithCourses();
+                  if (response.success && response.data?.courses) {
+                    setBuildingCourses(response.data.courses);
+                  }
+                } catch (error) {
+                  console.error('Error fetching building courses after approval:', error);
+                }
+                setBuildingCoursesLoading(false);
+              }
+            }
+            previousApprovalStatus.current = result.user.approvalStatus;
+          } catch (error) {
+            console.log('[HomeScreen] Error refreshing user data:', error);
+          }
+        }
+      };
+      checkApprovalStatus();
+    }, [user?.id, fetchMe])
+  );
 
   useEffect(() => {
     fetchCourses();
@@ -175,7 +224,11 @@ const HomeScreen = () => {
             <Ionicons name="time-outline" size={24} color="#f59e0b" />
             <View style={styles.pendingBannerContent}>
               <Text style={styles.pendingBannerTitle}>Building Access Pending</Text>
-              <Text style={styles.pendingBannerText}>Your building access is under verification.</Text>
+              <Text style={styles.pendingBannerText}>
+                {user?.building?.name 
+                  ? `Your request to join ${user.building.name} is under review.`
+                  : 'Your building access request is under verification.'}
+              </Text>
             </View>
           </View>
         )}
