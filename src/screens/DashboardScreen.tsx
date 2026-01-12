@@ -32,7 +32,7 @@ const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuthStore();
   const { purchasedPacks } = useLibraryStore();
-  const { purchasedCourseIds } = usePurchasedCoursesStore();
+  const { purchasedCourseIds, syncFromBackend } = usePurchasedCoursesStore();
   const { currentTip, loadDailyTip, getNewTip } = useTipsStore();
   const { courses, fetchCourses, refreshCourses, isLoading } = useCourseStore();
   const { isDark } = useThemeStore();
@@ -42,11 +42,16 @@ const DashboardScreen = () => {
   useEffect(() => {
     loadDailyTip();
     fetchCourses();
+    // Sync purchased courses from backend on mount
+    syncFromBackend();
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshCourses();
+    await Promise.all([
+      refreshCourses(),
+      syncFromBackend(),
+    ]);
     setRefreshing(false);
   }, []);
 
@@ -164,6 +169,69 @@ const DashboardScreen = () => {
             </View>
           )}
 
+          {/* My Purchased Courses */}
+          {myPurchasedCourses.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text variant="h4" style={{ color: theme.text }}>My Purchased Courses</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Library')}>
+                  <Text variant="label" style={{ color: theme.primary }}>View all</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                {myPurchasedCourses.map((course) => (
+                  <TouchableOpacity 
+                    key={course.id} 
+                    style={styles.purchasedCourseCard}
+                    onPress={() => handlePackPress(course.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: course.thumbnailUrl }} style={styles.purchasedCourseImage} />
+                    <View style={styles.purchasedBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#fff" />
+                      <Text variant="captionSmall" style={{ color: '#fff', marginLeft: 2 }}>Purchased</Text>
+                    </View>
+                    <View style={styles.purchasedCourseContent}>
+                      <Text variant="label" numberOfLines={2} style={{ color: theme.text }}>{course.title}</Text>
+                      <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
+                      <View style={styles.purchasedCourseFooter}>
+                        <View style={styles.purchasedCourseMeta}>
+                          <Ionicons name="time-outline" size={12} color={theme.textMuted} />
+                          <Text variant="captionSmall" style={{ color: theme.textMuted, marginLeft: 2 }}>{course.duration} min</Text>
+                        </View>
+                        <TouchableOpacity style={styles.playButton}>
+                          <Ionicons name="play" size={14} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* No Purchased Courses - Show prompt */}
+          {myPurchasedCourses.length === 0 && purchasedPacks.length === 0 && (
+            <View style={styles.section}>
+              <Card style={styles.noPurchasesCard} elevation="sm">
+                <View style={styles.noPurchasesIcon}>
+                  <Ionicons name="school-outline" size={COMPONENT_SIZES.icon.lg} color={theme.primary} />
+                </View>
+                <Text variant="h4" style={{ color: theme.text, marginBottom: SPACING.xs }}>No Courses Yet</Text>
+                <Text variant="body" style={{ color: theme.textSecondary, textAlign: 'center', marginBottom: SPACING.md }}>
+                  Start your music journey by purchasing a course
+                </Text>
+                <TouchableOpacity 
+                  style={styles.browseCourseButton}
+                  onPress={() => navigation.navigate('Browse')}
+                >
+                  <Text variant="button" style={{ color: '#fff' }}>Browse Courses</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                </TouchableOpacity>
+              </Card>
+            </View>
+          )}
+
           {/* Recommended for You */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -219,6 +287,18 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   bookRoomContent: { flexDirection: 'row', alignItems: 'center' },
   bookRoomIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
   bookRoomText: { flex: 1 },
+  // Purchased courses styles
+  purchasedCourseCard: { width: 180, marginRight: SPACING.sm, backgroundColor: theme.card, borderRadius: RADIUS.md, overflow: 'hidden', ...SHADOWS.sm },
+  purchasedCourseImage: { width: '100%', height: 100, backgroundColor: theme.surfaceVariant },
+  purchasedBadge: { position: 'absolute', top: SPACING.xs, right: SPACING.xs, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.success, paddingHorizontal: SPACING.xs, paddingVertical: 2, borderRadius: RADIUS.xs },
+  purchasedCourseContent: { padding: SPACING.sm },
+  purchasedCourseFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.xs },
+  purchasedCourseMeta: { flexDirection: 'row', alignItems: 'center' },
+  playButton: { width: 28, height: 28, borderRadius: 14, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' },
+  // No purchases card
+  noPurchasesCard: { marginHorizontal: SPACING.screenPadding, padding: SPACING.lg, alignItems: 'center' },
+  noPurchasesIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md },
+  browseCourseButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.primary, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderRadius: RADIUS.md, gap: SPACING.xs },
 });
 
 export default DashboardScreen;

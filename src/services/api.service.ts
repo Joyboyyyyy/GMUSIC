@@ -315,6 +315,40 @@ export const paymentApi = {
   },
 };
 
+// ============================================
+// TEACHER API
+// ============================================
+
+export interface Teacher {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+  bio: string;
+  rating: number;
+  ratingCount: number;
+  students: number;
+  coursesCount: number;
+  instruments: string[];
+  buildings: { id: string; name: string; city: string }[];
+}
+
+export const teacherApi = {
+  // Get featured teachers
+  getFeaturedTeachers: async (limit?: number): Promise<ApiResponse<Teacher[]>> => {
+    const response = await api.get('/api/teachers/featured', {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  // Get teacher by ID
+  getTeacherById: async (teacherId: string): Promise<ApiResponse<Teacher>> => {
+    const response = await api.get(`/api/teachers/${teacherId}`);
+    return response.data;
+  },
+};
+
 // Export all APIs
 export default {
   building: buildingApi,
@@ -323,6 +357,7 @@ export default {
   notification: notificationApi,
   course: courseApi,
   payment: paymentApi,
+  teacher: teacherApi,
 };
 
 

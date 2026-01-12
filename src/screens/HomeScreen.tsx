@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { mockTeachers } from '../data/mockData';
 import PackCard from '../components/PackCard';
 import FloatingCartBar from '../components/FloatingCartBar';
 import { TestimonialsMarquee } from '../components/TestimonialsMarquee';
@@ -26,7 +25,7 @@ import CartIcon from '../components/CartIcon';
 import { useAuthStore } from '../store/authStore';
 import { useCourseStore } from '../store/courseStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
-import { buildingApi } from '../services/api.service';
+import { buildingApi, teacherApi, Teacher } from '../services/api.service';
 import { Course, Building } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -42,6 +41,8 @@ const HomeScreen = () => {
   const [buildingCoursesLoading, setBuildingCoursesLoading] = useState(false);
   const [publicBuildings, setPublicBuildings] = useState<Building[]>([]);
   const [publicBuildingsLoading, setPublicBuildingsLoading] = useState(false);
+  const [featuredTeachers, setFeaturedTeachers] = useState<Teacher[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
   const [cartBarVisible, setCartBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const previousApprovalStatus = useRef(user?.approvalStatus);
@@ -141,6 +142,23 @@ const HomeScreen = () => {
     fetchPublicBuildings();
   }, []);
 
+  // Fetch featured teachers
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      setTeachersLoading(true);
+      try {
+        const response = await teacherApi.getFeaturedTeachers(10);
+        if (response.success && response.data) {
+          setFeaturedTeachers(response.data);
+        }
+      } catch (error: any) { 
+        console.error('[HomeScreen] Error fetching teachers:', error?.message || error); 
+      }
+      setTeachersLoading(false);
+    };
+    fetchTeachers();
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshCourses();
@@ -158,6 +176,12 @@ const HomeScreen = () => {
       const response = await buildingApi.getPublicBuildings();
       if (response.success && response.data) setPublicBuildings(response.data);
     } catch (error) { console.error('Error refreshing public buildings:', error); }
+    
+    // Refresh featured teachers
+    try {
+      const response = await teacherApi.getFeaturedTeachers(10);
+      if (response.success && response.data) setFeaturedTeachers(response.data);
+    } catch (error) { console.error('Error refreshing teachers:', error); }
     
     setRefreshing(false);
   }, [hasBuildingAccess, user?.buildingId]);
@@ -439,16 +463,29 @@ const HomeScreen = () => {
             <Text style={styles.sectionTitle}>Featured Teachers</Text>
             <TouchableOpacity><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-            {mockTeachers.map((t) => (
-              <TouchableOpacity key={t.id} style={styles.teacherCard}>
-                <Image source={{ uri: t.avatarUrl }} style={styles.teacherAvatar} />
-                <Text style={styles.teacherName}>{t.name}</Text>
-                <View style={styles.teacherRating}><Ionicons name="star" size={12} color="#f59e0b" /><Text style={styles.teacherRatingText}>{t.rating}</Text></View>
-                <Text style={styles.teacherStudents}>{t.students.toLocaleString()} students</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {teachersLoading ? (
+            <View style={styles.loadingContainer}><ActivityIndicator size="large" color={theme.primary} /></View>
+          ) : featuredTeachers.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+              {featuredTeachers.map((t) => (
+                <TouchableOpacity 
+                  key={t.id} 
+                  style={styles.teacherCard}
+                  onPress={() => navigation.navigate('TeacherDetail', { teacherId: t.id })}
+                >
+                  <Image source={{ uri: t.avatarUrl }} style={styles.teacherAvatar} />
+                  <Text style={styles.teacherName} numberOfLines={1}>{t.name}</Text>
+                  <View style={styles.teacherRating}><Ionicons name="star" size={12} color="#f59e0b" /><Text style={styles.teacherRatingText}>{t.rating.toFixed(1)}</Text></View>
+                  <Text style={styles.teacherStudents}>{t.students.toLocaleString()} students</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyTeachers}>
+              <Ionicons name="people-outline" size={48} color={theme.textMuted} />
+              <Text style={styles.emptyTeachersText}>No teachers available yet</Text>
+            </View>
+          )}
         </View>
 
         {trendingPacks.length > 0 && (
@@ -591,6 +628,8 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   teacherRating: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   teacherRatingText: { fontSize: 12, color: theme.textSecondary, marginLeft: 4 },
   teacherStudents: { fontSize: 11, color: theme.textMuted, marginTop: 4 },
+  emptyTeachers: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20, backgroundColor: theme.surfaceVariant, marginHorizontal: 20, borderRadius: 12 },
+  emptyTeachersText: { fontSize: 14, color: theme.textSecondary, marginTop: 8, textAlign: 'center' },
 });
 
 export default HomeScreen;

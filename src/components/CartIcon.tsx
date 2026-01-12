@@ -1,11 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useThemeStore, getTheme } from '../store/themeStore';
-import { COMPONENT_SIZES } from '../theme/designSystem';
+import { COMPONENT_SIZES, SPACING } from '../theme/designSystem';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -27,7 +27,7 @@ const CartIcon = () => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
+    marginLeft: SPACING.sm,
   },
 });
 

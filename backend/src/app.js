@@ -12,6 +12,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
 import searchRoutes from "./routes/search.routes.js";
+import teacherRoutes from "./routes/teacher.routes.js";
 import { verifyEmailRedirect, resetPasswordRedirect } from './controllers/redirect.controller.js';
 
 const app = express();
@@ -125,6 +126,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/teachers", teacherRoutes);
 
 // Debug: Log all registered routes in development
 if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {

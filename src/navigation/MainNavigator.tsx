@@ -230,7 +230,7 @@ const NearbyBuildingsScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Loading buildings...</Text>
@@ -240,7 +240,7 @@ const NearbyBuildingsScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         onScroll={handleScroll} 
@@ -358,6 +358,17 @@ const NearbyBuildingsScreen: React.FC = () => {
                 </View>
                 <View style={styles.cardDetails}>
                   <View style={styles.cardDetailRow}>
+
+            {/* Under Development Overlay */}
+            <View style={styles.mapOverlay}>
+              <View style={styles.overlayContent}>
+                <View style={styles.lockIconContainer}>
+                  <Ionicons name="construct" size={32} color="#fff" />
+                </View>
+                <Text style={styles.overlayTitle}>Coming Soon</Text>
+                <Text style={styles.overlayText}>Map feature is under development</Text>
+              </View>
+            </View>
                     <Ionicons name="location-outline" size={14} color={theme.textSecondary} />
                     <Text style={styles.cardDetailText} numberOfLines={1}>
                       {selectedBuilding.address ? `${selectedBuilding.address}, ${selectedBuilding.city}` : selectedBuilding.city}
@@ -420,7 +431,7 @@ const NearbyBuildingsScreen: React.FC = () => {
                           <Ionicons 
                             name={isPublic ? 'globe-outline' : 'lock-closed-outline'} 
                             size={10} 
-                            color={isPublic ? '#10b981' : '#f59e0b'} 
+                            color={isPublic ? '#10b981' : '#ebb542ff'} 
                           />
                           <Text style={[styles.visibilityText, isPublic ? styles.publicText : styles.privateText]}>
                             {isPublic ? 'Public' : 'Private'}
@@ -480,6 +491,38 @@ const createNearbyStyles = (theme: Theme, isDark: boolean) => StyleSheet.create(
   mapSection: { paddingHorizontal: SPACING.md, marginBottom: SPACING.lg },
   mapContainer: { borderRadius: RADIUS.xl, height: 400, overflow: 'hidden', position: 'relative' },
   map: { flex: 1 },
+  // Map Overlay - Under Development
+  mapOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  overlayContent: {
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  lockIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  overlayTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: SPACING.xs,
+  },
+  overlayText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
   // Center Button
   centerButton: {
     position: 'absolute',

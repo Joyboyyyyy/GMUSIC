@@ -114,24 +114,13 @@ const EditProfileScreen = () => {
       return;
     }
 
-    if (!email.trim()) {
-      Alert.alert('Validation Error', 'Email cannot be empty');
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address');
-      return;
-    }
-
     setLoading(true);
     try {
-      // Update user profile with profilePicture stored directly in database
+      // Update user profile (email is not editable)
       await updateUser({
         name: name.trim(),
-        email: email.trim(),
         bio: bio.trim(),
-        profilePicture: profilePicture, // Save directly to database column
+        profilePicture: profilePicture,
       });
 
       // Clear pending image after successful save
@@ -203,18 +192,18 @@ const EditProfileScreen = () => {
               />
             </View>
 
-            {/* Email Input */}
+            {/* Email Input - Read Only */}
             <View style={styles.inputCard}>
-              <Text style={styles.label}>Email Address *</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email"
-                placeholderTextColor={theme.textMuted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Email Address</Text>
+                <View style={styles.lockedBadge}>
+                  <Ionicons name="lock-closed" size={12} color={theme.textMuted} />
+                  <Text style={styles.lockedText}>Cannot be changed</Text>
+                </View>
+              </View>
+              <View style={styles.readOnlyInput}>
+                <Text style={styles.readOnlyText}>{email}</Text>
+              </View>
             </View>
 
             {/* Bio Input */}
@@ -351,6 +340,37 @@ const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
     color: theme.textMuted,
     textAlign: 'right',
     marginTop: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.surfaceVariant,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  lockedText: {
+    fontSize: 11,
+    color: theme.textMuted,
+  },
+  readOnlyInput: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: theme.surfaceVariant,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  readOnlyText: {
+    fontSize: 16,
+    color: theme.textSecondary,
   },
   infoCard: {
     flexDirection: 'row',

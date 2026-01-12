@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useLibraryStore } from '../store/libraryStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import ProtectedScreen from '../components/ProtectedScreen';
 import NotificationBell from '../components/NotificationBell';
@@ -28,8 +29,12 @@ const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuthStore();
   const { purchasedPacks } = useLibraryStore();
+  const { purchasedCourseIds } = usePurchasedCoursesStore();
   const { isDark, toggleTheme } = useThemeStore();
   const theme = getTheme(isDark);
+
+  // Use purchasedCourseIds count as the primary source
+  const purchasedCount = purchasedCourseIds.length;
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -73,7 +78,7 @@ const ProfileScreen = () => {
           <Card style={styles.statsContainer} elevation="sm">
             <Row style={{ justifyContent: 'space-around' }}>
               <View style={styles.statItem}>
-                <Text variant="h3" style={{ color: theme.primary }}>{purchasedPacks.length}</Text>
+                <Text variant="h3" style={{ color: theme.primary }}>{purchasedCount}</Text>
                 <Text variant="caption" style={{ color: theme.textSecondary }}>Packs</Text>
               </View>
               <View style={styles.divider} />
