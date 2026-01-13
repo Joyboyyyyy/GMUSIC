@@ -59,6 +59,16 @@ app.use("/api/payments", (req, res, next) => {
 });
 
 /* Health checks */
+// Root route for Render health checks
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Gretex Music Room API",
+    version: "1.0.0",
+    docs: "/health for detailed status"
+  });
+});
+
 app.get("/health", async (req, res) => {
   try {
     // Database health check - uses minimal SELECT 1 query to verify database is responsive
