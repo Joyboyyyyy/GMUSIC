@@ -1,4 +1,4 @@
-package com.rogerr6969.gretexmusicroom
+package com.gretexmusicroom.app
 
 import android.os.Build
 import android.os.Bundle

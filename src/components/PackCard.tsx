@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MusicPack } from '../types';
 import { useThemeStore, getTheme } from '../store/themeStore';
+import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 import BlinkitCartButton from './BlinkitCartButton';
 
 interface PackCardProps {
@@ -14,15 +15,24 @@ interface PackCardProps {
 const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
   const { isDark } = useThemeStore();
   const theme = getTheme(isDark);
+  const { hasPurchased } = usePurchasedCoursesStore();
+  const isOwned = hasPurchased(pack.id);
   const styles = createStyles(theme);
 
   return (
     <TouchableOpacity style={[styles.container, fullWidth && styles.fullWidthContainer]} onPress={onPress} activeOpacity={0.9}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: pack.thumbnailUrl }} style={styles.thumbnail} />
-        <View style={styles.priceBadge}>
-          <Text style={styles.priceText}>₹{pack.price}</Text>
-        </View>
+        {isOwned ? (
+          <View style={styles.ownedBadge}>
+            <Ionicons name="checkmark-circle" size={12} color="#fff" />
+            <Text style={styles.ownedText}>Owned</Text>
+          </View>
+        ) : (
+          <View style={styles.priceBadge}>
+            <Text style={styles.priceText}>₹{pack.price}</Text>
+          </View>
+        )}
       </View>
       
       <View style={styles.content}>
@@ -39,7 +49,7 @@ const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
               <Text style={styles.badgeText}>{pack.level}</Text>
             </View>
           </View>
-          <BlinkitCartButton pack={pack} size="small" />
+          {!isOwned && <BlinkitCartButton pack={pack} size="small" />}
         </View>
       </View>
     </TouchableOpacity>
@@ -53,6 +63,8 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   thumbnail: { width: '100%', height: 120, backgroundColor: theme.surfaceVariant },
   priceBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: theme.card, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 },
   priceText: { fontSize: 14, fontWeight: '700', color: theme.primary },
+  ownedBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ownedText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   content: { padding: 12 },
   title: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 4, lineHeight: 18 },
   teacher: { fontSize: 12, color: theme.textSecondary, marginBottom: 10 },

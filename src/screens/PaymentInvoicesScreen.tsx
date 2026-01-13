@@ -6,6 +6,8 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
+  Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { paymentApi } from '../services/api.service';
+import { useAuthStore } from '../store/authStore';
 import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 import ProtectedScreen from '../components/ProtectedScreen';
 import { Text, Card } from '../components/ui';
@@ -56,9 +59,10 @@ const PaymentInvoicesScreen = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { isDark } = useThemeStore();
   const theme = getTheme(isDark);
-  const styles = createStyles(theme, isDark);
+  const styles = createStyles(theme);
 
   const fetchPayments = async () => {
     try {
@@ -82,6 +86,38 @@ const PaymentInvoicesScreen = () => {
     await fetchPayments();
     setRefreshing(false);
   }, []);
+
+  const handleDownloadInvoice = async (paymentId: string) => {
+    try {
+      setDownloadingId(paymentId);
+      
+      // Get the auth token
+      const token = useAuthStore.getState().token;
+      
+      // Build the invoice URL with auth token
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      const invoiceUrl = `${baseUrl}/api/invoices/${paymentId}?token=${token}`;
+      
+      console.log('[Invoice] Opening PDF:', invoiceUrl);
+      
+      // Open in browser to view/download the PDF
+      const canOpen = await Linking.canOpenURL(invoiceUrl);
+      if (canOpen) {
+        await Linking.openURL(invoiceUrl);
+      } else {
+        Alert.alert('Error', 'Cannot open invoice URL');
+      }
+    } catch (error) {
+      console.error('Error opening invoice:', error);
+      Alert.alert(
+        'Error',
+        'Unable to open the invoice. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const getStatusColor = (status: Payment['status']) => {
     switch (status) {
@@ -157,6 +193,7 @@ const PaymentInvoicesScreen = () => {
     const statusColor = getStatusColor(item.status);
     const statusIcon = getStatusIcon(item.status);
     const methodIcon = getPaymentMethodIcon(item.razorpay?.method);
+    const isDownloading = downloadingId === item.id;
 
     return (
       <Card style={styles.paymentCard} elevation="sm">
@@ -231,6 +268,25 @@ const PaymentInvoicesScreen = () => {
             </View>
           )}
         </View>
+
+        {/* Download Invoice Button - Only show for completed payments */}
+        {item.status === 'COMPLETED' && (
+          <TouchableOpacity
+            style={[styles.downloadButton, isDownloading && styles.downloadButtonDisabled]}
+            onPress={() => handleDownloadInvoice(item.id)}
+            disabled={isDownloading}
+            activeOpacity={0.7}
+          >
+            {isDownloading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Ionicons name="document-text-outline" size={18} color="#ffffff" />
+            )}
+            <Text variant="body" style={styles.downloadButtonText}>
+              {isDownloading ? 'Opening...' : 'View Invoice'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </Card>
     );
   };
@@ -288,7 +344,7 @@ const PaymentInvoicesScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
@@ -354,6 +410,24 @@ const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.primary,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+    marginTop: SPACING.md,
+    gap: SPACING.xs,
+  },
+  downloadButtonDisabled: {
+    opacity: 0.7,
+  },
+  downloadButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
   },
 });
 

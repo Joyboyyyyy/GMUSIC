@@ -14,10 +14,12 @@ const router = express.Router();
 
 // Public routes
 router.get('/', getAllCourses);
-router.get('/:courseId', getCourseById);
 
-// Protected routes (students)
+// Protected routes (students) - MUST be before /:courseId to avoid route conflict
 router.get('/user/my-courses', authenticate, getUserCourses);
+
+// Public route with param - MUST be after specific routes
+router.get('/:courseId', getCourseById);
 
 // Admin/Teacher routes
 router.post('/', authenticate, requireRole('ADMIN', 'TEACHER'), createCourse);

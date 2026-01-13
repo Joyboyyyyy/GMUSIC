@@ -13,6 +13,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
 import searchRoutes from "./routes/search.routes.js";
 import teacherRoutes from "./routes/teacher.routes.js";
+import invoiceRoutes from "./routes/invoice.routes.js";
 import { verifyEmailRedirect, resetPasswordRedirect } from './controllers/redirect.controller.js';
 
 const app = express();
@@ -127,6 +128,84 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/teachers", teacherRoutes);
+app.use("/api/invoices", invoiceRoutes);
+
+// Test email endpoint (for debugging SMTP)
+app.get('/api/test-email', async (req, res) => {
+  try {
+    const { to } = req.query;
+    if (!to) {
+      return res.status(400).json({ success: false, error: 'Please provide ?to=your@email.com' });
+    }
+
+    const nodemailer = await import('nodemailer');
+    
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = parseInt(process.env.SMTP_PORT || '465');
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const emailFrom = process.env.EMAIL_FROM || smtpUser;
+
+    console.log('[Test Email] SMTP Config:');
+    console.log(`  Host: ${smtpHost}`);
+    console.log(`  Port: ${smtpPort}`);
+    console.log(`  User: ${smtpUser}`);
+    console.log(`  From: ${emailFrom}`);
+    console.log(`  To: ${to}`);
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'SMTP not configured',
+        config: { smtpHost, smtpPort, smtpUser: smtpUser ? 'SET' : 'NOT SET', smtpPass: smtpPass ? 'SET' : 'NOT SET' }
+      });
+    }
+
+    const transporter = nodemailer.default.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    // Verify connection
+    console.log('[Test Email] Verifying SMTP connection...');
+    await transporter.verify();
+    console.log('[Test Email] ✅ SMTP connection verified');
+
+    // Send test email
+    const info = await transporter.sendMail({
+      from: emailFrom,
+      to: to,
+      subject: 'Test Email from Gretex Music Room',
+      html: `
+        <h1>🎵 Test Email</h1>
+        <p>This is a test email from Gretex Music Room backend.</p>
+        <p>If you received this, your SMTP configuration is working!</p>
+        <p>Time: ${new Date().toISOString()}</p>
+      `,
+    });
+
+    console.log('[Test Email] ✅ Email sent:', info.messageId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Test email sent!',
+      messageId: info.messageId,
+      to: to
+    });
+  } catch (error) {
+    console.error('[Test Email] ❌ Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
 
 // Debug: Log all registered routes in development
 if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {

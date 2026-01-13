@@ -316,6 +316,27 @@ export const paymentApi = {
 };
 
 // ============================================
+// INVOICE API
+// ============================================
+
+export const invoiceApi = {
+  // Get invoice download URL (returns PDF blob)
+  getInvoiceUrl: (paymentId: string): string => {
+    const baseUrl = api.defaults.baseURL || '';
+    return `${baseUrl}/api/invoices/${paymentId}`;
+  },
+
+  // Generate and save invoice
+  generateInvoice: async (
+    paymentId: string,
+    sendEmail: boolean = false
+  ): Promise<ApiResponse<{ url: string; sent: boolean }>> => {
+    const response = await api.post(`/api/invoices/${paymentId}/generate`, { sendEmail });
+    return response.data;
+  },
+};
+
+// ============================================
 // TEACHER API
 // ============================================
 

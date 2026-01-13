@@ -2,7 +2,7 @@ export default {
     expo: {
       name: "Gretex Music Room",
       slug: "gretex-music-room",
-      version: "1.0.0",
+      version: "1.0.1",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "light",
@@ -65,8 +65,8 @@ export default {
       },
   
       android: {
-        package: "com.rogerr6969.gretexmusicroom",
-        versionCode: 1,
+        package: "com.gretexmusicroom.app",
+        versionCode: 2,
         usesCleartextTraffic: true,
         adaptiveIcon: {
           foregroundImage: "./assets/adaptive-icon.png",
