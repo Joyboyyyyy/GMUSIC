@@ -73,7 +73,6 @@ export default {
       android: {
         package: "com.gretexmusicroom.app",
         versionCode: 2,
-        usesCleartextTraffic: true,
         adaptiveIcon: {
           foregroundImage: "./assets/adaptive-icon.png",
           backgroundColor: "#000000"
