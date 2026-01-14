@@ -10,8 +10,7 @@
         "simulator": true
       },
       "android": {
-        "buildType": "apk",
-        "image": "latest"
+        "buildType": "apk"
       }
     },
     "preview": {
@@ -20,8 +19,7 @@
         "simulator": false
       },
       "android": {
-        "buildType": "apk",
-        "image": "ubuntu-22.04-jdk-17-ndk-r26b"
+        "buildType": "apk"
       }
     },
     "production": {
@@ -31,8 +29,7 @@
       },
       "android": {
         "autoIncrement": true,
-        "buildType": "app-bundle",
-        "image": "ubuntu-22.04-jdk-17-ndk-r26b"
+        "buildType": "app-bundle"
       }
     }
   }
