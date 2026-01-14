@@ -27,7 +27,13 @@ export default {
             locationAlwaysAndWhenInUsePermission: "Allow Gretex Music Room to use your location to find nearby music buildings."
           }
         ],
-        "@maplibre/maplibre-react-native"
+        "@maplibre/maplibre-react-native",
+        [
+          "@react-native-google-signin/google-signin",
+          {
+            iosUrlScheme: "com.googleusercontent.apps.600437075384-kk1rfkb9jmmqgm3413iddam4hrhf717k"
+          }
+        ]
       ],
   
       ios: {
