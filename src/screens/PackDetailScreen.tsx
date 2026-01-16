@@ -122,6 +122,15 @@ const PackDetailScreen = () => {
   const tracks = mockTracks[packId] || [];
   const isPurchased = hasPurchased(packId) || hasPack(packId);
 
+  // Check if course has ended
+  const courseEndDate = courseData?.endDate ? new Date(courseData.endDate) : null;
+  const isCourseEnded = courseEndDate && new Date() > courseEndDate;
+  
+  // Show purchase button only if:
+  // 1. Not purchased yet, OR
+  // 2. Purchased but course hasn't ended yet
+  const canPurchase = !isPurchased || (isPurchased && !isCourseEnded);
+
   const handlePlayPause = async () => {
     if (!videoRef.current) return;
     if (isVideoPlaying) await videoRef.current.pauseAsync();
@@ -156,7 +165,13 @@ const PackDetailScreen = () => {
   if (isLoading) return <View style={[styles.container, styles.centered]}><ActivityIndicator size="large" color={theme.primary} /></View>;
   if (!pack) return <View style={[styles.container, styles.centered]}><Ionicons name="alert-circle-outline" size={64} color={theme.textMuted} /><Text style={styles.notFoundText}>Course not found</Text></View>;
 
-  const handleBuyNow = () => requireAuth(status, navigation, () => navigation.navigate('Checkout', { pack }), 'Please login to purchase', { name: 'Checkout', params: { pack } });
+  const handleBuyNow = () => {
+    if (isPurchased) {
+      Alert.alert('Already Purchased', 'You have already purchased this course. Access it from your library.');
+      return;
+    }
+    requireAuth(status, navigation, () => navigation.navigate('Checkout', { pack }), 'Please login to purchase', { name: 'Checkout', params: { pack } });
+  };
 
   const handleTrackPress = (trackId: string) => {
     const track = tracks.find((t) => t.id === trackId);
@@ -292,12 +307,19 @@ const PackDetailScreen = () => {
         {/* Price + Buttons */}
         <View style={styles.priceSection}>
           <Text style={styles.priceAmount}>₹{pack.price.toLocaleString()}</Text>
-          <View style={styles.priceButtons}>
-            <BlinkitCartButton pack={pack} size="large" style={styles.cartBtn} />
-            <TouchableOpacity style={styles.buyNowBtn} onPress={handleBuyNow}>
-              <Text style={styles.buyNowText}>Buy now</Text>
-            </TouchableOpacity>
-          </View>
+          {isPurchased && isCourseEnded ? (
+            <View style={styles.courseEndedContainer}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.courseEndedText}>Course completed</Text>
+            </View>
+          ) : (
+            <View style={styles.priceButtons}>
+              <BlinkitCartButton pack={pack} size="large" style={styles.cartBtn} />
+              <TouchableOpacity style={styles.buyNowBtn} onPress={handleBuyNow}>
+                <Text style={styles.buyNowText}>Buy now</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* What you'll learn */}
@@ -424,6 +446,11 @@ const PackDetailScreen = () => {
           <Text style={styles.bottomPrice}>₹{pack.price.toLocaleString()}</Text>
           <TouchableOpacity style={styles.bottomBuyBtn} onPress={handleBuyNow}><Text style={styles.bottomBuyText}>Buy now</Text></TouchableOpacity>
         </View>
+      ) : isCourseEnded ? (
+        <View style={styles.bottomBarCompleted}>
+          <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+          <Text style={styles.completedText}>Course completed</Text>
+        </View>
       ) : (
         <View style={styles.bottomBarOwned}><Ionicons name="checkmark-circle" size={24} color="#10b981" /><Text style={styles.ownedText}>You own this course</Text></View>
       )}
@@ -542,6 +569,21 @@ const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
+  },
+  courseEndedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#d1fae5',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  courseEndedText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10b981',
   },
   section: {
     paddingHorizontal: 16,
@@ -795,6 +837,26 @@ const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
     paddingBottom: 28,
   },
   ownedText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  bottomBarCompleted: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.surface,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+    paddingBottom: 28,
+  },
+  completedText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#10b981',

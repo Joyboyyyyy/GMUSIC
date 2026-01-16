@@ -32,6 +32,7 @@ import BuildingMapScreen from '../screens/BuildingMapScreen';
 import TrinityInfoScreen from '../screens/TrinityInfoScreen';
 import BrowseScreen from '../screens/BrowseScreen';
 import TeacherDetailScreen from '../screens/TeacherDetailScreen';
+import AboutScreen from '../screens/AboutScreen';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
@@ -347,6 +348,13 @@ const RootNavigator = () => {
       <Stack.Screen 
         name="TeacherDetail" 
         component={TeacherDetailScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="About" 
+        component={AboutScreen}
         options={{
           headerShown: false,
         }}

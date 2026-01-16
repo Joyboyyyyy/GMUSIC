@@ -30,6 +30,7 @@ export type RootStackParamList = {
   TrinityInfo: undefined;
   Browse: { category?: string } | undefined;
   TeacherDetail: { teacherId: string };
+  About: undefined;
 };
 
 export type AuthStackParamList = {

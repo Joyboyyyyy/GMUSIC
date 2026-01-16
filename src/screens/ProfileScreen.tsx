@@ -36,6 +36,8 @@ const ProfileScreen = () => {
   // Use purchasedCourseIds count as the primary source
   const purchasedCount = purchasedCourseIds.length;
 
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -47,12 +49,11 @@ const ProfileScreen = () => {
     { icon: 'person-outline', title: 'Edit Profile', subtitle: 'Update your personal information', onPress: () => navigation.navigate('EditProfile') },
     { icon: 'library-outline', title: 'My Library', subtitle: 'View your purchased lessons', onPress: () => navigation.navigate('Library') },
     { icon: 'receipt-outline', title: 'Payment Invoices', subtitle: 'View your purchase history', onPress: () => navigation.navigate('PaymentInvoices' as any) },
-    { icon: 'notifications-outline', title: 'Notifications', subtitle: 'View your notifications', onPress: () => navigation.navigate('Notifications') },
     { icon: 'shield-checkmark-outline', title: 'Privacy & Security', subtitle: 'Manage your privacy settings', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
     { icon: 'lock-closed-outline', title: 'Change Password', subtitle: 'Update your account password', onPress: () => navigation.navigate('ChangePassword') },
     { icon: 'help-circle-outline', title: 'Help & Support', subtitle: 'Get help or contact support', onPress: () => Alert.alert('Coming Soon', 'This feature is under development') },
     { icon: 'chatbubble-ellipses-outline', title: 'Feedback', subtitle: 'Share your thoughts and suggestions', onPress: () => navigation.navigate('Feedback') },
-    { icon: 'information-circle-outline', title: 'About', subtitle: 'App version and information', onPress: () => Alert.alert('Gretex Music Room', 'Version 1.0.0\n\nLearn music from the best') },
+    { icon: 'information-circle-outline', title: 'About', subtitle: 'App version and policies', onPress: () => navigation.navigate('About') },
   ];
 
   const styles = createStyles(theme);
@@ -76,20 +77,20 @@ const ProfileScreen = () => {
 
           {/* Stats */}
           <Card style={styles.statsContainer} elevation="sm">
-            <Row style={{ justifyContent: 'space-around' }}>
+            <Row style={{ justifyContent: 'space-around', alignItems: 'center' }}>
               <View style={styles.statItem}>
                 <Text variant="h3" style={{ color: theme.primary }}>{purchasedCount}</Text>
-                <Text variant="caption" style={{ color: theme.textSecondary }}>Packs</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>Packs</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.statItem}>
                 <Text variant="h3" style={{ color: theme.primary }}>0</Text>
-                <Text variant="caption" style={{ color: theme.textSecondary }}>Completed</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>Completed</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.statItem}>
                 <Text variant="h3" style={{ color: theme.primary }}>{Math.floor(purchasedPacks.reduce((acc, pack) => acc + pack.duration, 0) / 60)}</Text>
-                <Text variant="caption" style={{ color: theme.textSecondary }}>Hours</Text>
+                <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>Hours</Text>
               </View>
             </Row>
           </Card>
@@ -111,6 +112,29 @@ const ProfileScreen = () => {
                 onValueChange={toggleTheme}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor={isDark ? '#fff' : '#f4f3f4'}
+              />
+            </Row>
+          </Card>
+
+          {/* Notifications Toggle */}
+          <Card style={styles.themeContainer} elevation="sm">
+            <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <Row style={{ alignItems: 'center', flex: 1 }}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="notifications-outline" size={COMPONENT_SIZES.icon.sm} color={theme.primary} />
+                </View>
+                <View style={styles.menuTextContainer}>
+                  <Text variant="label" style={{ color: theme.text }}>Notifications</Text>
+                  <Text variant="caption" style={{ color: theme.textMuted }}>
+                    {notificationsEnabled ? 'Receive notifications' : 'Notifications disabled'}
+                  </Text>
+                </View>
+              </Row>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={setNotificationsEnabled}
+                trackColor={{ false: theme.border, true: theme.primary }}
+                thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
               />
             </Row>
           </Card>
@@ -194,24 +218,124 @@ const ProfileScreen = () => {
 };
 
 const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.screenPadding, backgroundColor: theme.card, marginBottom: SPACING.md },
-  headerContent: { alignItems: 'center', flex: 1 },
-  headerIcons: { position: 'absolute', top: SPACING.md, right: SPACING.screenPadding, flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: COMPONENT_SIZES.avatar.xxl, height: COMPONENT_SIZES.avatar.xxl, borderRadius: COMPONENT_SIZES.avatar.xxl / 2, marginBottom: SPACING.md, borderWidth: 3, borderColor: theme.primary },
-  statsContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: SPACING.screenPadding },
-  statItem: { flex: 1, alignItems: 'center' },
-  divider: { width: 1, backgroundColor: theme.border },
-  themeContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: SPACING.md },
-  buildingsContainer: { marginHorizontal: SPACING.screenPadding, marginBottom: SPACING.md, padding: 0, overflow: 'hidden' },
-  buildingsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md },
-  currentBuildingInfo: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.md, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: SPACING.sm },
-  statusIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.xs, paddingVertical: 2, borderRadius: RADIUS.xs, alignSelf: 'flex-start' },
-  menuContainer: { marginHorizontal: SPACING.screenPadding, borderRadius: RADIUS.md, overflow: 'hidden', marginBottom: SPACING.md },
-  menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: theme.border },
-  iconContainer: { width: COMPONENT_SIZES.touchTarget.md, height: COMPONENT_SIZES.touchTarget.md, borderRadius: COMPONENT_SIZES.touchTarget.md / 2, backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },
-  menuTextContainer: { flex: 1 },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, marginHorizontal: SPACING.screenPadding, padding: SPACING.lg, borderRadius: RADIUS.md, gap: SPACING.xs, borderWidth: 1, borderColor: theme.error },
+  container: { 
+    flex: 1, 
+    backgroundColor: theme.background 
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    paddingVertical: SPACING.xl, 
+    paddingHorizontal: SPACING.screenPadding, 
+    backgroundColor: theme.card, 
+    marginBottom: SPACING.lg 
+  },
+  headerContent: { 
+    alignItems: 'center', 
+    flex: 1 
+  },
+  headerIcons: { 
+    position: 'absolute', 
+    top: SPACING.md, 
+    right: SPACING.screenPadding, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  avatar: { 
+    width: COMPONENT_SIZES.avatar.xxl, 
+    height: COMPONENT_SIZES.avatar.xxl, 
+    borderRadius: COMPONENT_SIZES.avatar.xxl / 2, 
+    marginBottom: SPACING.md, 
+    borderWidth: 3, 
+    borderColor: theme.primary 
+  },
+  statsContainer: { 
+    marginHorizontal: SPACING.screenPadding, 
+    marginBottom: SPACING.lg, 
+    padding: SPACING.md 
+  },
+  statItem: { 
+    flex: 1, 
+    alignItems: 'center' 
+  },
+  divider: { 
+    width: 1, 
+    height: 40,
+    backgroundColor: theme.border 
+  },
+  themeContainer: { 
+    marginHorizontal: SPACING.screenPadding, 
+    marginBottom: SPACING.md, 
+    padding: SPACING.md 
+  },
+  buildingsContainer: { 
+    marginHorizontal: SPACING.screenPadding, 
+    marginBottom: SPACING.lg, 
+    padding: 0, 
+    overflow: 'hidden' 
+  },
+  buildingsHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: SPACING.md 
+  },
+  currentBuildingInfo: { 
+    paddingHorizontal: SPACING.md, 
+    paddingBottom: SPACING.md, 
+    borderTopWidth: 1, 
+    borderTopColor: theme.border, 
+    paddingTop: SPACING.sm 
+  },
+  statusIndicator: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: SPACING.xs, 
+    paddingVertical: 2, 
+    borderRadius: RADIUS.xs, 
+    alignSelf: 'flex-start' 
+  },
+  menuContainer: { 
+    marginHorizontal: SPACING.screenPadding, 
+    borderRadius: RADIUS.md, 
+    overflow: 'hidden', 
+    marginBottom: SPACING.lg 
+  },
+  menuItem: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: SPACING.md, 
+    borderBottomWidth: 1, 
+    borderBottomColor: theme.border,
+    minHeight: 72,
+  },
+  iconContainer: { 
+    width: COMPONENT_SIZES.touchTarget.md, 
+    height: COMPONENT_SIZES.touchTarget.md, 
+    borderRadius: COMPONENT_SIZES.touchTarget.md / 2, 
+    backgroundColor: theme.primaryLight, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: SPACING.md 
+  },
+  menuTextContainer: { 
+    flex: 1 
+  },
+  logoutButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: theme.card, 
+    marginHorizontal: SPACING.screenPadding, 
+    padding: SPACING.md, 
+    borderRadius: RADIUS.md, 
+    gap: SPACING.xs, 
+    borderWidth: 1, 
+    borderColor: theme.error,
+    minHeight: COMPONENT_SIZES.button.height.md,
+  },
 });
 
 export default ProfileScreen;

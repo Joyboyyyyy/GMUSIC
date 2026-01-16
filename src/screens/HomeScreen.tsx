@@ -188,7 +188,6 @@ const HomeScreen = () => {
 
   const packs = courses;
   const featuredPacks = packs.slice(0, 4);
-  const trendingPacks = packs.slice(Math.min(2, packs.length), Math.min(6, packs.length));
   const newPacks = packs.slice(Math.min(4, packs.length), Math.min(8, packs.length));
   const handlePackPress = (packId: string) => navigation.navigate('PackDetail', { packId });
 
@@ -487,15 +486,6 @@ const HomeScreen = () => {
             </View>
           )}
         </View>
-
-        {trendingPacks.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Trending Now</Text><TouchableOpacity><Text style={styles.seeAll}>See all</Text></TouchableOpacity></View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-              {trendingPacks.map((pack) => <PackCard key={pack.id} pack={pack} onPress={() => handlePackPress(pack.id)} />)}
-            </ScrollView>
-          </View>
-        )}
 
         {newPacks.length > 0 && (
           <View style={styles.section}>

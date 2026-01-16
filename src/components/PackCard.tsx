@@ -15,15 +15,33 @@ interface PackCardProps {
 const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
   const { isDark } = useThemeStore();
   const theme = getTheme(isDark);
-  const { hasPurchased } = usePurchasedCoursesStore();
+  const { hasPurchased, purchasedCourseIds } = usePurchasedCoursesStore();
   const isOwned = hasPurchased(pack.id);
   const styles = createStyles(theme);
+
+  // Check if course has ended (if endDate is available in pack)
+  const courseEndDate = (pack as any).endDate ? new Date((pack as any).endDate) : null;
+  const isCourseEnded = courseEndDate && new Date() > courseEndDate;
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log(`[PackCard] 🎴 Rendering card for: ${pack.title}`);
+    console.log(`[PackCard]   - Course ID: ${pack.id}`);
+    console.log(`[PackCard]   - Is Owned: ${isOwned}`);
+    console.log(`[PackCard]   - Course Ended: ${isCourseEnded}`);
+    console.log(`[PackCard]   - All Purchased IDs:`, purchasedCourseIds);
+  }, [pack.id, pack.title, isOwned, purchasedCourseIds, isCourseEnded]);
 
   return (
     <TouchableOpacity style={[styles.container, fullWidth && styles.fullWidthContainer]} onPress={onPress} activeOpacity={0.9}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: pack.thumbnailUrl }} style={styles.thumbnail} />
-        {isOwned ? (
+        {isOwned && isCourseEnded ? (
+          <View style={styles.completedBadge}>
+            <Ionicons name="checkmark-circle" size={12} color="#fff" />
+            <Text style={styles.completedText}>Completed</Text>
+          </View>
+        ) : isOwned ? (
           <View style={styles.ownedBadge}>
             <Ionicons name="checkmark-circle" size={12} color="#fff" />
             <Text style={styles.ownedText}>Owned</Text>
@@ -49,7 +67,7 @@ const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
               <Text style={styles.badgeText}>{pack.level}</Text>
             </View>
           </View>
-          {!isOwned && <BlinkitCartButton pack={pack} size="small" />}
+          {!isOwned && !isCourseEnded && <BlinkitCartButton pack={pack} size="small" />}
         </View>
       </View>
     </TouchableOpacity>
@@ -65,6 +83,8 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   priceText: { fontSize: 14, fontWeight: '700', color: theme.primary },
   ownedBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
   ownedText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  completedBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: '#10b981', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  completedText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   content: { padding: 12 },
   title: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 4, lineHeight: 18 },
   teacher: { fontSize: 12, color: theme.textSecondary, marginBottom: 10 },

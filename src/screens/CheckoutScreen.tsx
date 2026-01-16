@@ -52,7 +52,6 @@ const CheckoutScreen = () => {
   const { addPurchasedCourse, addPurchasedCourses } = usePurchasedCoursesStore();
   const { clearCart, items: cartItems, getTotalPrice } = useCartStore();
   const [processing, setProcessing] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<'card' | 'upi' | 'netbanking'>('card');
   const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
 
   // Determine items to process
@@ -170,8 +169,16 @@ const CheckoutScreen = () => {
         amount: order.amount,
         name: 'Gretex Music Room',
         order_id: order.id,
-        prefill: { email: user.email || '', contact: '', name: user.name || '' },
+        prefill: { 
+          email: user.email || '', 
+          contact: user.phone || '9999999999', 
+          name: user.name || '' 
+        },
         theme: { color: '#7c3aed' },
+        readonly: {
+          contact: true,
+          email: true,
+        },
       };
 
       if (!isRazorpayAvailable()) throw new Error('WEB_PLATFORM');
@@ -306,35 +313,6 @@ const CheckoutScreen = () => {
           ))}
         </View>
 
-        {/* Payment Method */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          
-          <TouchableOpacity style={[styles.paymentOption, selectedPayment === 'card' && styles.paymentOptionSelected]} onPress={() => setSelectedPayment('card')}>
-            <View style={styles.paymentLeft}>
-              <Ionicons name="card" size={24} color={theme.primary} />
-              <Text style={styles.paymentText}>Credit/Debit Card</Text>
-            </View>
-            <View style={[styles.radio, selectedPayment === 'card' && styles.radioSelected]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.paymentOption, selectedPayment === 'upi' && styles.paymentOptionSelected]} onPress={() => setSelectedPayment('upi')}>
-            <View style={styles.paymentLeft}>
-              <Ionicons name="phone-portrait" size={24} color={theme.primary} />
-              <Text style={styles.paymentText}>UPI</Text>
-            </View>
-            <View style={[styles.radio, selectedPayment === 'upi' && styles.radioSelected]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.paymentOption, selectedPayment === 'netbanking' && styles.paymentOptionSelected]} onPress={() => setSelectedPayment('netbanking')}>
-            <View style={styles.paymentLeft}>
-              <Ionicons name="business" size={24} color={theme.primary} />
-              <Text style={styles.paymentText}>Net Banking</Text>
-            </View>
-            <View style={[styles.radio, selectedPayment === 'netbanking' && styles.radioSelected]} />
-          </TouchableOpacity>
-        </View>
-
         {/* Price Breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Price Details</Text>
@@ -398,12 +376,6 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   packTitle: { fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 6 },
   packTeacher: { fontSize: 13, color: theme.textSecondary, marginBottom: 8 },
   packPrice: { fontSize: 16, fontWeight: 'bold', color: theme.primary, marginTop: 4 },
-  paymentOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.card, padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 2, borderColor: theme.border },
-  paymentOptionSelected: { borderColor: theme.primary },
-  paymentLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  paymentText: { fontSize: 15, fontWeight: '600', color: theme.text },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border },
-  radioSelected: { borderColor: theme.primary, backgroundColor: theme.primary },
   priceCard: { backgroundColor: theme.card, padding: 20, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   priceLabel: { fontSize: 15, color: theme.textSecondary },

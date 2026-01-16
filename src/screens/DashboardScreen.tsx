@@ -57,10 +57,44 @@ const DashboardScreen = () => {
 
   const packs = courses;
   const myPurchasedCourses = packs.filter((pack) => purchasedCourseIds.includes(pack.id));
+  
+  // DEBUG: Log purchased courses and their teachers
+  console.log('[Dashboard] My Purchased Courses:', myPurchasedCourses.length);
+  myPurchasedCourses.forEach((course, index) => {
+    console.log(`[Dashboard] Course ${index + 1}:`, {
+      id: course.id,
+      title: course.title,
+      teacherId: course.teacher?.id,
+      teacherName: course.teacher?.name,
+    });
+  });
+  
   const uniqueMentors = Array.from(new Map(myPurchasedCourses.map((course) => [course.teacher.id, course.teacher])).values());
+  
+  // DEBUG: Log unique mentors
+  console.log('[Dashboard] Unique Mentors:', uniqueMentors.length);
+  uniqueMentors.forEach((mentor, index) => {
+    console.log(`[Dashboard] Mentor ${index + 1}:`, {
+      id: mentor.id,
+      name: mentor.name,
+    });
+  });
+  
   const recommendedPacks = packs.slice(0, 5);
-  const continueLearningPack = myPurchasedCourses.length > 0 ? myPurchasedCourses[0] : purchasedPacks.length > 0 ? purchasedPacks[0] : null;
-  const progressPercentage = 35;
+  
+  // Show ALL purchased courses in Continue Learning, not just the first one
+  const continueLearningCourses = myPurchasedCourses.length > 0 ? myPurchasedCourses : purchasedPacks;
+  
+  // Mock progress data - in production, this should come from backend
+  const getCourseProgress = (courseId: string) => {
+    // TODO: Replace with actual progress from backend
+    // For now, return mock data
+    const mockProgress: Record<string, number> = {};
+    myPurchasedCourses.forEach((course, index) => {
+      mockProgress[course.id] = index === 0 ? 35 : 0; // First course 35%, others 0%
+    });
+    return mockProgress[courseId] || 0;
+  };
 
   const handlePackPress = (packId: string) => navigation.navigate('PackDetail', { packId });
 
@@ -109,27 +143,39 @@ const DashboardScreen = () => {
             </Card>
           </View>
 
-          {/* Continue Learning */}
-          {continueLearningPack && (
+          {/* Continue Learning - Show ALL purchased courses vertically */}
+          {continueLearningCourses.length > 0 && (
             <View style={styles.section}>
               <Text variant="h4" style={{ color: theme.text, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.md }}>Continue Learning</Text>
-              <TouchableOpacity style={styles.continueCard} onPress={() => handlePackPress(continueLearningPack.id)}>
-                <Image source={{ uri: continueLearningPack.thumbnailUrl }} style={styles.continueImage} />
-                <View style={styles.continueContent}>
-                  <Text variant="h4" numberOfLines={1} style={{ color: theme.text }}>{continueLearningPack.title}</Text>
-                  <Text variant="bodySmall" style={{ color: theme.textSecondary }}>{continueLearningPack.teacher.name}</Text>
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
-                    </View>
-                    <Text variant="caption" style={{ color: theme.textSecondary, fontWeight: '600' }}>{progressPercentage}% complete</Text>
-                  </View>
-                  <TouchableOpacity style={styles.continueButton}>
-                    <Text variant="button" style={{ color: '#fff' }}>Continue</Text>
-                    <Ionicons name="play-circle" size={COMPONENT_SIZES.icon.sm} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
+              <View style={styles.continueLearningContainer}>
+                {continueLearningCourses.map((course) => {
+                  const progress = getCourseProgress(course.id);
+                  return (
+                    <TouchableOpacity 
+                      key={course.id} 
+                      style={styles.continueCard} 
+                      onPress={() => handlePackPress(course.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Image source={{ uri: course.thumbnailUrl }} style={styles.continueImage} />
+                      <View style={styles.continueContent}>
+                        <Text variant="h4" numberOfLines={1} style={{ color: theme.text }}>{course.title}</Text>
+                        <Text variant="bodySmall" style={{ color: theme.textSecondary }}>{course.teacher.name}</Text>
+                        <View style={styles.progressContainer}>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                          </View>
+                          <Text variant="caption" style={{ color: theme.textSecondary, fontWeight: '600' }}>{progress}% complete</Text>
+                        </View>
+                        <TouchableOpacity style={styles.continueButton}>
+                          <Text variant="button" style={{ color: '#fff' }}>Continue</Text>
+                          <Ionicons name="play-circle" size={COMPONENT_SIZES.icon.sm} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
 
@@ -169,7 +215,7 @@ const DashboardScreen = () => {
             </View>
           )}
 
-          {/* My Purchased Courses */}
+          {/* My Purchased Courses - Add progress bars */}
           {myPurchasedCourses.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -179,33 +225,45 @@ const DashboardScreen = () => {
                 </TouchableOpacity>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {myPurchasedCourses.map((course) => (
-                  <TouchableOpacity 
-                    key={course.id} 
-                    style={styles.purchasedCourseCard}
-                    onPress={() => handlePackPress(course.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Image source={{ uri: course.thumbnailUrl }} style={styles.purchasedCourseImage} />
-                    <View style={styles.purchasedBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color="#fff" />
-                      <Text variant="captionSmall" style={{ color: '#fff', marginLeft: 2 }}>Purchased</Text>
-                    </View>
-                    <View style={styles.purchasedCourseContent}>
-                      <Text variant="label" numberOfLines={2} style={{ color: theme.text }}>{course.title}</Text>
-                      <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
-                      <View style={styles.purchasedCourseFooter}>
-                        <View style={styles.purchasedCourseMeta}>
-                          <Ionicons name="time-outline" size={12} color={theme.textMuted} />
-                          <Text variant="captionSmall" style={{ color: theme.textMuted, marginLeft: 2 }}>{course.duration} min</Text>
-                        </View>
-                        <TouchableOpacity style={styles.playButton}>
-                          <Ionicons name="play" size={14} color="#fff" />
-                        </TouchableOpacity>
+                {myPurchasedCourses.map((course) => {
+                  const progress = getCourseProgress(course.id);
+                  return (
+                    <TouchableOpacity 
+                      key={course.id} 
+                      style={styles.purchasedCourseCard}
+                      onPress={() => handlePackPress(course.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Image source={{ uri: course.thumbnailUrl }} style={styles.purchasedCourseImage} />
+                      <View style={styles.purchasedBadge}>
+                        <Ionicons name="checkmark-circle" size={14} color="#fff" />
+                        <Text variant="captionSmall" style={{ color: '#fff', marginLeft: 2 }}>Purchased</Text>
                       </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                      <View style={styles.purchasedCourseContent}>
+                        <Text variant="label" numberOfLines={2} style={{ color: theme.text }}>{course.title}</Text>
+                        <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
+                        
+                        {/* Progress Bar */}
+                        <View style={styles.purchasedProgressContainer}>
+                          <View style={styles.purchasedProgressBar}>
+                            <View style={[styles.purchasedProgressFill, { width: `${progress}%` }]} />
+                          </View>
+                          <Text variant="captionSmall" style={{ color: theme.textSecondary, fontWeight: '600' }}>{progress}%</Text>
+                        </View>
+                        
+                        <View style={styles.purchasedCourseFooter}>
+                          <View style={styles.purchasedCourseMeta}>
+                            <Ionicons name="time-outline" size={12} color={theme.textMuted} />
+                            <Text variant="captionSmall" style={{ color: theme.textMuted, marginLeft: 2 }}>{course.duration} min</Text>
+                          </View>
+                          <TouchableOpacity style={styles.playButton}>
+                            <Ionicons name="play" size={14} color="#fff" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </View>
           )}
@@ -267,7 +325,8 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.screenPadding, paddingVertical: SPACING.md },
   section: { marginBottom: SPACING.lg },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.md },
-  continueCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: theme.card, borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOWS.lg },
+  continueLearningContainer: { paddingHorizontal: SPACING.screenPadding, gap: SPACING.md },
+  continueCard: { backgroundColor: theme.card, borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOWS.lg },
   continueImage: { width: '100%', height: 180 },
   continueContent: { padding: SPACING.screenPadding },
   progressContainer: { marginVertical: SPACING.md },
@@ -292,6 +351,9 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   purchasedCourseImage: { width: '100%', height: 100, backgroundColor: theme.surfaceVariant },
   purchasedBadge: { position: 'absolute', top: SPACING.xs, right: SPACING.xs, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.success, paddingHorizontal: SPACING.xs, paddingVertical: 2, borderRadius: RADIUS.xs },
   purchasedCourseContent: { padding: SPACING.sm },
+  purchasedProgressContainer: { marginTop: SPACING.xs, marginBottom: SPACING.xs },
+  purchasedProgressBar: { height: 4, backgroundColor: theme.surfaceVariant, borderRadius: RADIUS.xs, overflow: 'hidden', marginBottom: 4 },
+  purchasedProgressFill: { height: '100%', backgroundColor: theme.primary },
   purchasedCourseFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.xs },
   purchasedCourseMeta: { flexDirection: 'row', alignItems: 'center' },
   playButton: { width: 28, height: 28, borderRadius: 14, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' },
