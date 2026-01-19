@@ -43,9 +43,12 @@ const NotificationBell: React.FC = () => {
     navigation.navigate('Notifications');
   };
 
+  // Use white color in dark mode for better visibility
+  const iconColor = isDark ? '#ffffff' : theme.text;
+
   return (
     <TouchableOpacity onPress={handlePress} style={styles.container}>
-      <Ionicons name="notifications-outline" size={COMPONENT_SIZES.icon.md} color={theme.text} />
+      <Ionicons name="notifications-outline" size={COMPONENT_SIZES.icon.md} color={iconColor} />
       {unreadCount > 0 && (
         <View style={styles.badge}>
           <Text variant="captionSmall" style={{ color: '#fff', fontWeight: 'bold' }}>

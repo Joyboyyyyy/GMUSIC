@@ -322,9 +322,9 @@ const MainNavigator = () => {
           backgroundColor: theme.tabBar,
           borderTopWidth: 1,
           borderTopColor: theme.tabBarBorder,
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          paddingBottom: 28,
+          paddingTop: 8,
+          height: 85,
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}

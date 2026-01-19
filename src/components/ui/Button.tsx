@@ -2,13 +2,12 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  StyleSheet,
   ActivityIndicator,
   ViewStyle,
   TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SPACING, COMPONENT_SIZES, RADIUS, SHADOWS, TEXT_STYLES } from '../../theme/designSystem';
+import { SPACING, COMPONENT_SIZES, SHADOWS, TEXT_STYLES } from '../../theme/designSystem';
 import { useThemeStore, getTheme } from '../../store/themeStore';
 
 type ButtonSize = 'sm' | 'md' | 'lg';

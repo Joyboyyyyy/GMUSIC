@@ -149,7 +149,6 @@ const DashboardScreen = () => {
               <Text variant="h4" style={{ color: theme.text, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.md }}>Continue Learning</Text>
               <View style={styles.continueLearningContainer}>
                 {continueLearningCourses.map((course) => {
-                  const progress = getCourseProgress(course.id);
                   return (
                     <TouchableOpacity 
                       key={course.id} 
@@ -160,13 +159,7 @@ const DashboardScreen = () => {
                       <Image source={{ uri: course.thumbnailUrl }} style={styles.continueImage} />
                       <View style={styles.continueContent}>
                         <Text variant="h4" numberOfLines={1} style={{ color: theme.text }}>{course.title}</Text>
-                        <Text variant="bodySmall" style={{ color: theme.textSecondary }}>{course.teacher.name}</Text>
-                        <View style={styles.progressContainer}>
-                          <View style={styles.progressBar}>
-                            <View style={[styles.progressFill, { width: `${progress}%` }]} />
-                          </View>
-                          <Text variant="caption" style={{ color: theme.textSecondary, fontWeight: '600' }}>{progress}% complete</Text>
-                        </View>
+                        <Text variant="bodySmall" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
                         <TouchableOpacity style={styles.continueButton}>
                           <Text variant="button" style={{ color: '#fff' }}>Continue</Text>
                           <Ionicons name="play-circle" size={COMPONENT_SIZES.icon.sm} color="#fff" />
@@ -215,7 +208,7 @@ const DashboardScreen = () => {
             </View>
           )}
 
-          {/* My Purchased Courses - Add progress bars */}
+          {/* My Purchased Courses */}
           {myPurchasedCourses.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -226,7 +219,6 @@ const DashboardScreen = () => {
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
                 {myPurchasedCourses.map((course) => {
-                  const progress = getCourseProgress(course.id);
                   return (
                     <TouchableOpacity 
                       key={course.id} 
@@ -242,14 +234,6 @@ const DashboardScreen = () => {
                       <View style={styles.purchasedCourseContent}>
                         <Text variant="label" numberOfLines={2} style={{ color: theme.text }}>{course.title}</Text>
                         <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
-                        
-                        {/* Progress Bar */}
-                        <View style={styles.purchasedProgressContainer}>
-                          <View style={styles.purchasedProgressBar}>
-                            <View style={[styles.purchasedProgressFill, { width: `${progress}%` }]} />
-                          </View>
-                          <Text variant="captionSmall" style={{ color: theme.textSecondary, fontWeight: '600' }}>{progress}%</Text>
-                        </View>
                         
                         <View style={styles.purchasedCourseFooter}>
                           <View style={styles.purchasedCourseMeta}>
@@ -329,10 +313,7 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   continueCard: { backgroundColor: theme.card, borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOWS.lg },
   continueImage: { width: '100%', height: 180 },
   continueContent: { padding: SPACING.screenPadding },
-  progressContainer: { marginVertical: SPACING.md },
-  progressBar: { height: SPACING.xs, backgroundColor: theme.surfaceVariant, borderRadius: RADIUS.xs, overflow: 'hidden', marginBottom: SPACING.xs },
-  progressFill: { height: '100%', backgroundColor: theme.primary },
-  continueButton: { backgroundColor: theme.primary, paddingVertical: SPACING.sm, borderRadius: RADIUS.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs },
+  continueButton: { backgroundColor: theme.primary, paddingVertical: SPACING.sm, borderRadius: RADIUS.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, marginTop: SPACING.md },
   tipCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: isDark ? '#422006' : '#fefce8', borderRadius: RADIUS.lg, padding: SPACING.screenPadding, borderWidth: 2, borderColor: isDark ? '#854d0e' : '#fde047', ...SHADOWS.sm },
   tipHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
   refreshButton: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xxs, paddingHorizontal: SPACING.xs, paddingVertical: SPACING.xxs },
@@ -351,10 +332,7 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   purchasedCourseImage: { width: '100%', height: 100, backgroundColor: theme.surfaceVariant },
   purchasedBadge: { position: 'absolute', top: SPACING.xs, right: SPACING.xs, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.success, paddingHorizontal: SPACING.xs, paddingVertical: 2, borderRadius: RADIUS.xs },
   purchasedCourseContent: { padding: SPACING.sm },
-  purchasedProgressContainer: { marginTop: SPACING.xs, marginBottom: SPACING.xs },
-  purchasedProgressBar: { height: 4, backgroundColor: theme.surfaceVariant, borderRadius: RADIUS.xs, overflow: 'hidden', marginBottom: 4 },
-  purchasedProgressFill: { height: '100%', backgroundColor: theme.primary },
-  purchasedCourseFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.xs },
+  purchasedCourseFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.sm },
   purchasedCourseMeta: { flexDirection: 'row', alignItems: 'center' },
   playButton: { width: 28, height: 28, borderRadius: 14, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' },
   // No purchases card

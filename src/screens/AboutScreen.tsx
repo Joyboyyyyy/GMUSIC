@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import { Text } from '../components/ui';
-import { SPACING, COMPONENT_SIZES } from '../theme/designSystem';
+import { SPACING, COMPONENT_SIZES, RADIUS } from '../theme/designSystem';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,7 +42,7 @@ const AboutScreen = () => {
     },
   ];
 
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, isDark);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -71,37 +72,12 @@ const AboutScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* App Store Link Section */}
-        <View style={styles.storeSection}>
-          <Text variant="caption" style={{ color: theme.textMuted, marginBottom: SPACING.md }}>
-            Gretex in the Play Store
-          </Text>
-          <TouchableOpacity 
-            style={styles.storeItem}
-            onPress={() => Alert.alert('Coming Soon', 'Play Store link will be available soon')}
-          >
-            <Text variant="body" style={{ color: theme.text }}>Gretex - Music Learning</Text>
-            <Ionicons name="chevron-forward" size={COMPONENT_SIZES.icon.sm} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Description */}
-        <View style={styles.descriptionSection}>
-          <Text variant="body" style={{ color: theme.textSecondary, lineHeight: 24 }}>
-            Gretex is a music learning platform featuring expert instructors and comprehensive courses. 
-            Take courses in instruments like Guitar, Piano, Drums, and Vocals with professional guidance. 
-            Learn from certified teachers, book flexible time slots, and earn Trinity College London certifications. 
-            Join thousands of students who are mastering new skills, advancing their musical journey, and 
-            exploring their passion for music on Gretex.
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: theme.background 
@@ -133,27 +109,6 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
     paddingVertical: SPACING.md,
     minHeight: 56,
     backgroundColor: theme.background,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  storeSection: {
-    paddingHorizontal: SPACING.screenPadding,
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.md,
-  },
-  storeItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    minHeight: 56,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  descriptionSection: {
-    paddingHorizontal: SPACING.screenPadding,
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.xxl,
   },
 });
 

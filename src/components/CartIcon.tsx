@@ -17,6 +17,9 @@ const CartIcon = () => {
   const { getTotalItems } = useCartStore();
   const itemCount = getTotalItems();
 
+  // Use white color in dark mode for better visibility
+  const iconColor = isDark ? '#ffffff' : theme.text;
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -24,7 +27,7 @@ const CartIcon = () => {
       activeOpacity={0.7}
     >
       <View>
-        <Ionicons name="cart-outline" size={COMPONENT_SIZES.icon.md} color={theme.text} />
+        <Ionicons name="cart-outline" size={COMPONENT_SIZES.icon.md} color={iconColor} />
         {itemCount > 0 && (
           <View style={[styles.badge, { backgroundColor: theme.primary }]}>
             <Text style={styles.badgeText}>{itemCount > 99 ? '99+' : itemCount}</Text>
@@ -55,7 +58,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#fff',
-    fontSize: TYPOGRAPHY.xs,
+    fontSize: TYPOGRAPHY.fontSize.xs,
     fontWeight: '700',
     lineHeight: 14,
   },

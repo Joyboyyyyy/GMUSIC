@@ -17,23 +17,23 @@ import { useNavigation } from '@react-navigation/native';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-// Platform-safe Apple Authentication wrapper
-import { 
-  signInWithApple, 
-  isAppleAuthAvailable, 
-  showAppleAuthUnavailableAlert,
-  AppleAuthenticationScope
-} from '../../utils/appleAuth';
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// Platform-safe Apple Authentication wrapper - COMMENTED OUT FOR FREE TESTING
+// import { 
+//   signInWithApple, 
+//   isAppleAuthAvailable, 
+//   showAppleAuthUnavailableAlert,
+//   AppleAuthenticationScope
+// } from '../../utils/appleAuth';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../utils/api';
 
-// Configure Google Sign-In
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-  offlineAccess: true,
-  scopes: ['profile', 'email'],
-});
+// Configure Google Sign-In - COMMENTED OUT FOR FREE TESTING
+// GoogleSignin.configure({
+//   webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+//   offlineAccess: true,
+//   scopes: ['profile', 'email'],
+// });
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, "Login">;
 
@@ -41,9 +41,12 @@ const LoginScreen = () => {
   const navigation = useNavigation<LoginNav>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [googleLoading, setGoogleLoading] = useState(false);
   
   const { login, loginWithCredentials, loginWithApple, redirectPath, clearRedirectPath, loading } = useAuthStore();
+
+  React.useEffect(() => {
+    console.log('[LoginScreen] Mounted');
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -92,6 +95,8 @@ const LoginScreen = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    // COMMENTED OUT FOR FREE TESTING - Will be re-enabled before App Store submission
+    /*
     try {
       setGoogleLoading(true);
       console.log('[Google Auth] Starting native Google Sign-In');
@@ -146,9 +151,12 @@ const LoginScreen = () => {
     } finally {
       setGoogleLoading(false);
     }
+    */
   };
 
   const handleAppleLogin = async () => {
+    // COMMENTED OUT FOR FREE TESTING - Will be re-enabled before App Store submission
+    /*
     if (!isAppleAuthAvailable()) {
       showAppleAuthUnavailableAlert();
       return;
@@ -169,6 +177,7 @@ const LoginScreen = () => {
       }
       Alert.alert('Error', 'Apple login failed');
     }
+    */
   };
 
   return (
@@ -240,7 +249,8 @@ const LoginScreen = () => {
             </View>
 
             <View style={styles.socialButtons}>
-              <TouchableOpacity
+              {/* GOOGLE SIGN-IN COMMENTED OUT FOR FREE TESTING - Will be re-enabled before App Store submission */}
+              {/* <TouchableOpacity
                 style={styles.googleButton}
                 onPress={handleGoogleSignIn}
                 disabled={googleLoading || loading}
@@ -253,9 +263,10 @@ const LoginScreen = () => {
                     <Text style={styles.socialButtonText}>Google</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
-              {Platform.OS === 'ios' && (
+              {/* APPLE SIGN-IN COMMENTED OUT FOR FREE TESTING - Will be re-enabled before App Store submission */}
+              {/* {Platform.OS === 'ios' && (
                 <TouchableOpacity
                   style={styles.appleButton}
                   onPress={handleAppleLogin}
@@ -266,7 +277,7 @@ const LoginScreen = () => {
                     Apple
                   </Text>
                 </TouchableOpacity>
-              )}
+              )} */}
             </View>
 
             <TouchableOpacity

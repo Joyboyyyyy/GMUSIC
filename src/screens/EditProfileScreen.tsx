@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { File } from 'expo-file-system/next';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, getTheme, Theme } from '../store/themeStore';
 import { RootStackParamList } from '../navigation/types';
+import ImageCropper from '../components/ImageCropper';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,6 +41,8 @@ const EditProfileScreen = () => {
   const [loading, setLoading] = useState(false);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [showCheckmark, setShowCheckmark] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [tempImageUri, setTempImageUri] = useState<string | null>(null);
   const checkmarkScale = React.useRef(new Animated.Value(0)).current;
 
   const validateEmail = (email: string) => {
@@ -57,55 +61,64 @@ const EditProfileScreen = () => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 0.9,
       });
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        
-        // Convert image to base64 for storage in database
-        try {
-          // Use new expo-file-system/next File class API
-          const file = new File(imageUri);
-          const base64 = await file.base64();
-          const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-          const base64DataUrl = `data:${mimeType};base64,${base64}`;
-          
-          setPendingImage(base64DataUrl);
-          setProfilePicture(base64DataUrl);
-        } catch (error) {
-          console.error('Error converting image to base64:', error);
-          // Fallback to URI if base64 conversion fails
-          setPendingImage(imageUri);
-          setProfilePicture(imageUri);
-        }
-        
-        // Show confirmation checkmark
-        setShowCheckmark(true);
-        Animated.spring(checkmarkScale, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 50,
-          friction: 7,
-        }).start();
-
-        // Hide checkmark after 2 seconds
-        setTimeout(() => {
-          Animated.spring(checkmarkScale, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7,
-          }).start(() => {
-            setShowCheckmark(false);
-          });
-        }, 2000);
+        // Show custom cropper
+        setTempImageUri(imageUri);
+        setShowCropper(true);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick image');
     }
+  };
+
+  const handleCropComplete = async (croppedUri: string) => {
+    setShowCropper(false);
+    setTempImageUri(null);
+    
+    // Convert image to base64 for storage in database
+    try {
+      const file = new File(croppedUri);
+      const base64 = await file.base64();
+      const mimeType = croppedUri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+      const base64DataUrl = `data:${mimeType};base64,${base64}`;
+      
+      setPendingImage(base64DataUrl);
+      setProfilePicture(base64DataUrl);
+    } catch (error) {
+      console.error('Error converting image to base64:', error);
+      setPendingImage(croppedUri);
+      setProfilePicture(croppedUri);
+    }
+    
+    // Show confirmation checkmark
+    setShowCheckmark(true);
+    Animated.spring(checkmarkScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start();
+
+    setTimeout(() => {
+      Animated.spring(checkmarkScale, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start(() => {
+        setShowCheckmark(false);
+      });
+    }, 2000);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setTempImageUri(null);
   };
 
   const handleSave = async () => {
@@ -250,6 +263,17 @@ const EditProfileScreen = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Custom Image Cropper Modal */}
+      <Modal visible={showCropper} animationType="slide" statusBarTranslucent>
+        {tempImageUri && (
+          <ImageCropper
+            imageUri={tempImageUri}
+            onCrop={handleCropComplete}
+            onCancel={handleCropCancel}
+          />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 };
