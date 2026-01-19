@@ -8,6 +8,7 @@ import { useAuthStore } from './src/store/authStore';
 import { useThemeStore, getTheme } from './src/store/themeStore';
 import { RootStackParamList } from './src/navigation/types';
 import { navigationRef } from './src/navigation/navigationRef';
+import { OfflineBanner } from './src/components/OfflineBanner';
 
 class ErrorBoundary extends React.Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -105,6 +106,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
+        <OfflineBanner />
         <NavigationContainer 
           ref={navigationRef} 
           linking={linking}

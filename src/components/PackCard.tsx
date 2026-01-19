@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MusicPack } from '../types';
@@ -96,4 +96,7 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
   badgeText: { fontSize: 10, color: theme.primary, fontWeight: '600' },
 });
 
-export default PackCard;
+// Memoize to prevent unnecessary re-renders
+export default memo(PackCard, (prevProps, nextProps) => {
+  return prevProps.pack.id === nextProps.pack.id;
+});
