@@ -10,6 +10,8 @@ import {
   ApiResponse,
   CreatePaymentOrderResponse,
 } from '../types';
+import { cacheData, getCachedData } from '../utils/offlineCache';
+import NetInfo from '@react-native-community/netinfo';
 
 // ============================================
 // BUILDING API
@@ -258,25 +260,149 @@ export const notificationApi = {
 // ============================================
 
 export const courseApi = {
-  // Get all courses
+  // Get all courses with offline support
   getCourses: async (filters?: {
     buildingId?: string;
     instrument?: string;
-  }): Promise<ApiResponse<Course[]>> => {
-    const response = await api.get('/api/courses', { params: filters });
-    return response.data;
+  }, signal?: AbortSignal): Promise<ApiResponse<Course[]>> => {
+    const cacheKey = `courses_${JSON.stringify(filters || {})}`;
+    
+    // Check network status
+    const netInfo = await NetInfo.fetch();
+    
+    if (!netInfo.isConnected) {
+      // Return cached data if offline
+      const cached = await getCachedData<Course[]>(cacheKey);
+      if (cached) {
+        return {
+          success: true,
+          data: cached,
+          message: 'Loaded from cache (offline)',
+        };
+      }
+      throw new Error('No internet connection and no cached data available');
+    }
+
+    // Fetch from API
+    try {
+      const response = await api.get('/api/courses', { 
+        params: filters,
+        signal, // Add signal for cancellation
+      });
+      
+      // Cache the response
+      if (response.data.success && response.data.data) {
+        await cacheData(cacheKey, response.data.data);
+      }
+      
+      return response.data;
+    } catch (error) {
+      // Don't fallback to cache if request was cancelled
+      if (signal?.aborted) {
+        throw error;
+      }
+      
+      // Fallback to cache on error
+      const cached = await getCachedData<Course[]>(cacheKey);
+      if (cached) {
+        console.log('[CourseAPI] Using cached data due to API error');
+        return {
+          success: true,
+          data: cached,
+          message: 'Loaded from cache (API error)',
+        };
+      }
+      throw error;
+    }
   },
 
-  // Get course by ID
-  getCourseById: async (id: string): Promise<ApiResponse<Course>> => {
-    const response = await api.get(`/api/courses/${id}`);
-    return response.data;
+  // Get course by ID with offline support
+  getCourseById: async (id: string, signal?: AbortSignal): Promise<ApiResponse<Course>> => {
+    const cacheKey = `course_${id}`;
+    
+    const netInfo = await NetInfo.fetch();
+    
+    if (!netInfo.isConnected) {
+      const cached = await getCachedData<Course>(cacheKey);
+      if (cached) {
+        return {
+          success: true,
+          data: cached,
+          message: 'Loaded from cache (offline)',
+        };
+      }
+      throw new Error('No internet connection and no cached data available');
+    }
+
+    try {
+      const response = await api.get(`/api/courses/${id}`, { signal });
+      
+      if (response.data.success && response.data.data) {
+        await cacheData(cacheKey, response.data.data);
+      }
+      
+      return response.data;
+    } catch (error) {
+      if (signal?.aborted) {
+        throw error;
+      }
+      
+      const cached = await getCachedData<Course>(cacheKey);
+      if (cached) {
+        return {
+          success: true,
+          data: cached,
+          message: 'Loaded from cache (API error)',
+        };
+      }
+      throw error;
+    }
   },
 
-  // Get courses for building
-  getCoursesForBuilding: async (buildingId: string): Promise<ApiResponse<Course[]>> => {
-    const response = await api.get('/api/courses', { params: { buildingId } });
-    return response.data;
+  // Get courses for building with offline support
+  getCoursesForBuilding: async (buildingId: string, signal?: AbortSignal): Promise<ApiResponse<Course[]>> => {
+    const cacheKey = `building_courses_${buildingId}`;
+    
+    const netInfo = await NetInfo.fetch();
+    
+    if (!netInfo.isConnected) {
+      const cached = await getCachedData<Course[]>(cacheKey);
+      if (cached) {
+        return {
+          success: true,
+          data: cached,
+          message: 'Loaded from cache (offline)',
+        };
+      }
+      throw new Error('No internet connection and no cached data available');
+    }
+
+    try {
+      const response = await api.get('/api/courses', { 
+        params: { buildingId },
+        signal,
+      });
+      
+      if (response.data.success && response.data.data) {
+        await cacheData(cacheKey, response.data.data);
+      }
+      
+      return response.data;
+    } catch (error) {
+      if (signal?.aborted) {
+        throw error;
+      }
+      
+      const cached = await getCachedData<Course[]>(cacheKey);
+      if (cached) {
+        return {
+          success: true,
+          data: cached,
+          message: 'Loaded from cache (API error)',
+        };
+      }
+      throw error;
+    }
   },
 };
 

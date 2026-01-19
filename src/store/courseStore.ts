@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { getApiUrl } from '../config/api';
 import { MusicPack, Teacher } from '../types';
+import { courseApi } from '../services/api.service';
+import { createCancellableRequest, isCancelledError } from '../utils/apiCancellation';
 
 // Default teacher for courses that don't have teacher data
 const defaultTeacher: Teacher = {
@@ -17,9 +18,11 @@ interface CourseState {
   isLoading: boolean;
   error: string | null;
   lastFetched: number | null;
+  currentRequest: { cancel: () => void } | null;
   fetchCourses: (forceRefresh?: boolean, buildingId?: string) => Promise<void>;
   getCourseById: (id: string) => MusicPack | undefined;
   refreshCourses: (buildingId?: string) => Promise<void>;
+  cancelCurrentRequest: () => void;
 }
 
 // Transform backend course to frontend MusicPack format
@@ -46,8 +49,15 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   isLoading: false,
   error: null,
   lastFetched: null,
+  currentRequest: null,
 
   fetchCourses: async (forceRefresh = false, buildingId?: string) => {
+    // Cancel any existing request
+    const { currentRequest } = get();
+    if (currentRequest) {
+      currentRequest.cancel();
+    }
+
     // Skip if recently fetched (within 5 minutes) unless force refresh
     const { lastFetched } = get();
     if (!forceRefresh && lastFetched && Date.now() - lastFetched < 5 * 60 * 1000) {
@@ -56,55 +66,42 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
     set({ isLoading: true, error: null });
 
+    // Create cancellable request
+    const request = createCancellableRequest();
+    set({ currentRequest: request });
+
     try {
-      // Build URL with buildingId if user has one
-      let url = getApiUrl('api/courses');
-      if (buildingId) {
-        url += `?buildingId=${buildingId}`;
+      console.log('[CourseStore] Fetching courses with buildingId:', buildingId);
+      
+      const filters = buildingId ? { buildingId } : undefined;
+      const response = await courseApi.getCourses(filters, request.signal);
+      
+      if (response.success && response.data) {
+        const courses = response.data.map(transformCourse);
+        console.log(`[CourseStore] Fetched ${courses.length} courses`);
+        
+        set({ 
+          courses, 
+          isLoading: false, 
+          lastFetched: Date.now(),
+          currentRequest: null,
+        });
+      } else {
+        throw new Error(response.message || 'Failed to fetch courses');
       }
-      console.log('[CourseStore] Fetching courses from:', url);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
-      });
-      
-      console.log('[CourseStore] Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[CourseStore] API error response:', errorText);
-        throw new Error(`Failed to fetch courses: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('[CourseStore] Raw response:', JSON.stringify(data).substring(0, 200));
-      
-      const coursesData = data.data || data || [];
-      
-      const courses = Array.isArray(coursesData) 
-        ? coursesData.map(transformCourse)
-        : [];
-
-      console.log(`[CourseStore] Fetched ${courses.length} courses`);
-      if (courses.length > 0) {
-        console.log('[CourseStore] First course ID:', courses[0].id);
-      }
-
-      set({ 
-        courses, 
-        isLoading: false, 
-        lastFetched: Date.now() 
-      });
     } catch (error: any) {
-      console.error('[CourseStore] Failed to fetch courses:', error.message || error);
-      set({ 
-        error: error.message || 'Failed to fetch courses', 
-        isLoading: false 
-      });
+      // Don't set error if request was cancelled
+      if (!isCancelledError(error)) {
+        console.error('[CourseStore] Failed to fetch courses:', error.message || error);
+        set({ 
+          error: error.message || 'Failed to fetch courses', 
+          isLoading: false,
+          currentRequest: null,
+        });
+      } else {
+        console.log('[CourseStore] Request cancelled');
+        set({ isLoading: false, currentRequest: null });
+      }
     }
   },
 
@@ -115,5 +112,13 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   refreshCourses: async (buildingId?: string) => {
     // Force refresh courses from API
     await get().fetchCourses(true, buildingId);
+  },
+
+  cancelCurrentRequest: () => {
+    const { currentRequest } = get();
+    if (currentRequest) {
+      currentRequest.cancel();
+      set({ currentRequest: null, isLoading: false });
+    }
   },
 }));

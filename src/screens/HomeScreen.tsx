@@ -22,6 +22,7 @@ import FloatingCartBar from '../components/FloatingCartBar';
 import { TestimonialsMarquee } from '../components/TestimonialsMarquee';
 import NotificationBell from '../components/NotificationBell';
 import CartIcon from '../components/CartIcon';
+import { OptimizedHorizontalList } from '../components/OptimizedHorizontalList';
 import { useAuthStore } from '../store/authStore';
 import { useCourseStore } from '../store/courseStore';
 import { useThemeStore, getTheme } from '../store/themeStore';
@@ -276,8 +277,10 @@ const HomeScreen = () => {
               {buildingCoursesLoading ? (
                 <View style={styles.loadingContainer}><ActivityIndicator size="large" color={theme.primary} /></View>
               ) : buildingCourses.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                  {buildingCourses.slice(0, 5).map((course) => (
+                <OptimizedHorizontalList
+                  data={buildingCourses.slice(0, 5)}
+                  keyExtractor={(course) => course.id}
+                  renderItem={({ item: course }) => (
                     <PackCard
                       key={course.id}
                       pack={{
@@ -290,8 +293,9 @@ const HomeScreen = () => {
                       }}
                       onPress={() => handlePackPress(course.id)}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                  itemWidth={180}
+                />
               ) : (
                 <View style={styles.emptyBuildingCourses}>
                   <Ionicons name="school-outline" size={32} color={theme.textMuted} />
@@ -328,8 +332,10 @@ const HomeScreen = () => {
           {publicBuildingsLoading ? (
             <View style={styles.loadingContainer}><ActivityIndicator size="large" color={theme.primary} /></View>
           ) : publicBuildings.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-              {publicBuildings.slice(0, 5).map((building) => (
+            <OptimizedHorizontalList
+              data={publicBuildings.slice(0, 5)}
+              keyExtractor={(building) => building.id}
+              renderItem={({ item: building }) => (
                 <TouchableOpacity key={building.id} style={styles.buildingCard} onPress={() => navigation.navigate('BuildingCourses', { buildingId: building.id, buildingName: building.name })} activeOpacity={0.7}>
                   <View style={styles.buildingCardHeader}>
                     <View style={styles.buildingCardIcon}><Ionicons name="business" size={28} color={theme.primary} /></View>
@@ -350,8 +356,9 @@ const HomeScreen = () => {
                     <Text style={styles.buildingCardCourses}>{building.courses?.length || 0} courses</Text>
                   </View>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              )}
+              itemWidth={160}
+            />
           ) : (
             <View style={styles.emptyPublicBuildings}>
               <Ionicons name="business-outline" size={48} color={theme.textMuted} />
@@ -404,9 +411,12 @@ const HomeScreen = () => {
           {isLoading ? (
             <View style={styles.loadingContainer}><ActivityIndicator size="large" color={theme.primary} /></View>
           ) : featuredPacks.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-              {featuredPacks.map((pack) => <PackCard key={pack.id} pack={pack} onPress={() => handlePackPress(pack.id)} />)}
-            </ScrollView>
+            <OptimizedHorizontalList
+              data={featuredPacks}
+              keyExtractor={(pack) => pack.id}
+              renderItem={({ item: pack }) => <PackCard pack={pack} onPress={() => handlePackPress(pack.id)} />}
+              itemWidth={180}
+            />
           ) : <EmptyCoursesState />}
         </View>
 
@@ -465,8 +475,10 @@ const HomeScreen = () => {
           {teachersLoading ? (
             <View style={styles.loadingContainer}><ActivityIndicator size="large" color={theme.primary} /></View>
           ) : featuredTeachers.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-              {featuredTeachers.map((t) => (
+            <OptimizedHorizontalList
+              data={featuredTeachers}
+              keyExtractor={(teacher) => teacher.id}
+              renderItem={({ item: t }) => (
                 <TouchableOpacity 
                   key={t.id} 
                   style={styles.teacherCard}
@@ -477,8 +489,9 @@ const HomeScreen = () => {
                   <View style={styles.teacherRating}><Ionicons name="star" size={12} color="#f59e0b" /><Text style={styles.teacherRatingText}>{t.rating.toFixed(1)}</Text></View>
                   <Text style={styles.teacherStudents}>{t.students.toLocaleString()} students</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              )}
+              itemWidth={140}
+            />
           ) : (
             <View style={styles.emptyTeachers}>
               <Ionicons name="people-outline" size={48} color={theme.textMuted} />
@@ -490,9 +503,12 @@ const HomeScreen = () => {
         {newPacks.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>New Releases</Text><TouchableOpacity><Text style={styles.seeAll}>See all</Text></TouchableOpacity></View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-              {newPacks.map((pack) => <PackCard key={pack.id} pack={pack} onPress={() => handlePackPress(pack.id)} />)}
-            </ScrollView>
+            <OptimizedHorizontalList
+              data={newPacks}
+              keyExtractor={(pack) => pack.id}
+              renderItem={({ item: pack }) => <PackCard pack={pack} onPress={() => handlePackPress(pack.id)} />}
+              itemWidth={180}
+            />
           </View>
         )}
 

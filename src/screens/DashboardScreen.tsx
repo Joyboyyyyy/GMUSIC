@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -23,6 +23,7 @@ import PackCard from '../components/PackCard';
 import ProtectedScreen from '../components/ProtectedScreen';
 import NotificationBell from '../components/NotificationBell';
 import CartIcon from '../components/CartIcon';
+import { OptimizedHorizontalList } from '../components/OptimizedHorizontalList';
 import { Text, Card } from '../components/ui';
 import { SPACING, RADIUS, SHADOWS, COMPONENT_SIZES } from '../theme/designSystem';
 
@@ -56,45 +57,36 @@ const DashboardScreen = () => {
   }, []);
 
   const packs = courses;
-  const myPurchasedCourses = packs.filter((pack) => purchasedCourseIds.includes(pack.id));
   
-  // DEBUG: Log purchased courses and their teachers
-  console.log('[Dashboard] My Purchased Courses:', myPurchasedCourses.length);
-  myPurchasedCourses.forEach((course, index) => {
-    console.log(`[Dashboard] Course ${index + 1}:`, {
-      id: course.id,
-      title: course.title,
-      teacherId: course.teacher?.id,
-      teacherName: course.teacher?.name,
-    });
-  });
+  // Memoize expensive calculations to prevent unnecessary re-renders
+  const myPurchasedCourses = useMemo(() => 
+    packs.filter((pack) => purchasedCourseIds.includes(pack.id)), 
+    [packs, purchasedCourseIds]
+  );
   
-  const uniqueMentors = Array.from(new Map(myPurchasedCourses.map((course) => [course.teacher.id, course.teacher])).values());
+  const uniqueMentors = useMemo(() => 
+    Array.from(new Map(myPurchasedCourses.map((course) => [course.teacher.id, course.teacher])).values()),
+    [myPurchasedCourses]
+  );
   
-  // DEBUG: Log unique mentors
-  console.log('[Dashboard] Unique Mentors:', uniqueMentors.length);
-  uniqueMentors.forEach((mentor, index) => {
-    console.log(`[Dashboard] Mentor ${index + 1}:`, {
-      id: mentor.id,
-      name: mentor.name,
-    });
-  });
-  
-  const recommendedPacks = packs.slice(0, 5);
+  const recommendedPacks = useMemo(() => packs.slice(0, 5), [packs]);
   
   // Show ALL purchased courses in Continue Learning, not just the first one
-  const continueLearningCourses = myPurchasedCourses.length > 0 ? myPurchasedCourses : purchasedPacks;
+  const continueLearningCourses = useMemo(() => 
+    myPurchasedCourses.length > 0 ? myPurchasedCourses : purchasedPacks,
+    [myPurchasedCourses, purchasedPacks]
+  );
   
   // Mock progress data - in production, this should come from backend
-  const getCourseProgress = (courseId: string) => {
-    // TODO: Replace with actual progress from backend
-    // For now, return mock data
-    const mockProgress: Record<string, number> = {};
-    myPurchasedCourses.forEach((course, index) => {
-      mockProgress[course.id] = index === 0 ? 35 : 0; // First course 35%, others 0%
-    });
-    return mockProgress[courseId] || 0;
-  };
+  // const getCourseProgress = (courseId: string) => {
+  //   // TODO: Replace with actual progress from backend
+  //   // For now, return mock data
+  //   const mockProgress: Record<string, number> = {};
+  //   myPurchasedCourses.forEach((course, index) => {
+  //     mockProgress[course.id] = index === 0 ? 35 : 0; // First course 35%, others 0%
+  //   });
+  //   return mockProgress[courseId] || 0;
+  // };
 
   const handlePackPress = (packId: string) => navigation.navigate('PackDetail', { packId });
 
@@ -190,8 +182,10 @@ const DashboardScreen = () => {
           {uniqueMentors.length > 0 && (
             <View style={styles.section}>
               <Text variant="h4" style={{ color: theme.text, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.md }}>Your Mentors</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {uniqueMentors.map((mentor) => {
+              <OptimizedHorizontalList
+                data={uniqueMentors}
+                keyExtractor={(mentor) => mentor.id}
+                renderItem={({ item: mentor }) => {
                   const mentorCourse = myPurchasedCourses.find((c) => c.teacher.id === mentor.id);
                   return (
                     <TouchableOpacity key={mentor.id} style={styles.mentorCard} onPress={() => mentorCourse && handlePackPress(mentorCourse.id)}>
@@ -203,8 +197,9 @@ const DashboardScreen = () => {
                       </View>
                     </TouchableOpacity>
                   );
-                })}
-              </ScrollView>
+                }}
+                itemWidth={120}
+              />
             </View>
           )}
 
@@ -217,38 +212,39 @@ const DashboardScreen = () => {
                   <Text variant="label" style={{ color: theme.primary }}>View all</Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {myPurchasedCourses.map((course) => {
-                  return (
-                    <TouchableOpacity 
-                      key={course.id} 
-                      style={styles.purchasedCourseCard}
-                      onPress={() => handlePackPress(course.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Image source={{ uri: course.thumbnailUrl }} style={styles.purchasedCourseImage} />
-                      <View style={styles.purchasedBadge}>
-                        <Ionicons name="checkmark-circle" size={14} color="#fff" />
-                        <Text variant="captionSmall" style={{ color: '#fff', marginLeft: 2 }}>Purchased</Text>
-                      </View>
-                      <View style={styles.purchasedCourseContent}>
-                        <Text variant="label" numberOfLines={2} style={{ color: theme.text }}>{course.title}</Text>
-                        <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
-                        
-                        <View style={styles.purchasedCourseFooter}>
-                          <View style={styles.purchasedCourseMeta}>
-                            <Ionicons name="time-outline" size={12} color={theme.textMuted} />
-                            <Text variant="captionSmall" style={{ color: theme.textMuted, marginLeft: 2 }}>{course.duration} min</Text>
-                          </View>
-                          <TouchableOpacity style={styles.playButton}>
-                            <Ionicons name="play" size={14} color="#fff" />
-                          </TouchableOpacity>
+              <OptimizedHorizontalList
+                data={myPurchasedCourses}
+                keyExtractor={(course) => course.id}
+                renderItem={({ item: course }) => (
+                  <TouchableOpacity 
+                    key={course.id} 
+                    style={styles.purchasedCourseCard}
+                    onPress={() => handlePackPress(course.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: course.thumbnailUrl }} style={styles.purchasedCourseImage} />
+                    <View style={styles.purchasedBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#fff" />
+                      <Text variant="captionSmall" style={{ color: '#fff', marginLeft: 2 }}>Purchased</Text>
+                    </View>
+                    <View style={styles.purchasedCourseContent}>
+                      <Text variant="label" numberOfLines={2} style={{ color: theme.text }}>{course.title}</Text>
+                      <Text variant="caption" style={{ color: theme.textSecondary, marginTop: SPACING.xxs }}>{course.teacher.name}</Text>
+                      
+                      <View style={styles.purchasedCourseFooter}>
+                        <View style={styles.purchasedCourseMeta}>
+                          <Ionicons name="time-outline" size={12} color={theme.textMuted} />
+                          <Text variant="captionSmall" style={{ color: theme.textMuted, marginLeft: 2 }}>{course.duration} min</Text>
                         </View>
+                        <TouchableOpacity style={styles.playButton}>
+                          <Ionicons name="play" size={14} color="#fff" />
+                        </TouchableOpacity>
                       </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                itemWidth={180}
+              />
             </View>
           )}
 
@@ -287,11 +283,14 @@ const DashboardScreen = () => {
                 <ActivityIndicator size="large" color={theme.primary} />
               </View>
             ) : recommendedPacks.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {recommendedPacks.map((pack) => (
+              <OptimizedHorizontalList
+                data={recommendedPacks}
+                keyExtractor={(pack) => pack.id}
+                renderItem={({ item: pack }) => (
                   <PackCard key={pack.id} pack={pack} onPress={() => handlePackPress(pack.id)} />
-                ))}
-              </ScrollView>
+                )}
+                itemWidth={180}
+              />
             ) : (
               <EmptyRecommendedState />
             )}

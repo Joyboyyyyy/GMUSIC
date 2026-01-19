@@ -5,6 +5,7 @@ import { MusicPack } from '../types';
 import { useThemeStore, getTheme } from '../store/themeStore';
 import { usePurchasedCoursesStore } from '../store/purchasedCoursesStore';
 import BlinkitCartButton from './BlinkitCartButton';
+import { OptimizedImage } from './OptimizedImage';
 
 interface PackCardProps {
   pack: MusicPack;
@@ -35,7 +36,13 @@ const PackCard: React.FC<PackCardProps> = ({ pack, onPress, fullWidth }) => {
   return (
     <TouchableOpacity style={[styles.container, fullWidth && styles.fullWidthContainer]} onPress={onPress} activeOpacity={0.9}>
       <View style={styles.imageContainer}>
-        <Image source={{ uri: pack.thumbnailUrl }} style={styles.thumbnail} />
+        <OptimizedImage 
+          uri={pack.thumbnailUrl} 
+          style={styles.thumbnail}
+          width={180}
+          height={120}
+          fallbackIcon="musical-notes-outline"
+        />
         {isOwned && isCourseEnded ? (
           <View style={styles.completedBadge}>
             <Ionicons name="checkmark-circle" size={12} color="#fff" />
