@@ -11,7 +11,7 @@ import {
   CreatePaymentOrderResponse,
 } from '../types';
 import { cacheData, getCachedData } from '../utils/offlineCache';
-import NetInfo from '@react-native-community/netinfo';
+// import NetInfo from '@react-native-community/netinfo';
 
 // ============================================
 // BUILDING API
@@ -267,8 +267,9 @@ export const courseApi = {
   }, signal?: AbortSignal): Promise<ApiResponse<Course[]>> => {
     const cacheKey = `courses_${JSON.stringify(filters || {})}`;
     
-    // Check network status
-    const netInfo = await NetInfo.fetch();
+    // Check network status (disabled for Expo Go compatibility)
+    // const netInfo = await NetInfo.fetch();
+    const netInfo = { isConnected: true }; // Assume connected for Expo Go
     
     if (!netInfo.isConnected) {
       // Return cached data if offline
@@ -320,7 +321,7 @@ export const courseApi = {
   getCourseById: async (id: string, signal?: AbortSignal): Promise<ApiResponse<Course>> => {
     const cacheKey = `course_${id}`;
     
-    const netInfo = await NetInfo.fetch();
+    const netInfo = { isConnected: true }; // Assume connected for Expo Go
     
     if (!netInfo.isConnected) {
       const cached = await getCachedData<Course>(cacheKey);
@@ -363,7 +364,7 @@ export const courseApi = {
   getCoursesForBuilding: async (buildingId: string, signal?: AbortSignal): Promise<ApiResponse<Course[]>> => {
     const cacheKey = `building_courses_${buildingId}`;
     
-    const netInfo = await NetInfo.fetch();
+    const netInfo = { isConnected: true }; // Assume connected for Expo Go
     
     if (!netInfo.isConnected) {
       const cached = await getCachedData<Course[]>(cacheKey);
