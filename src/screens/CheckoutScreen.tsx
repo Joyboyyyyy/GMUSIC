@@ -31,6 +31,7 @@ import { useThemeStore, getTheme } from '../store/themeStore';
 import { getApiUrl } from '../config/api';
 import { MusicPack } from '../types';
 import { requireAuth } from '../utils/auth';
+import { calculateTax, calculateTotal, getTaxPercentage } from '../config/tax';
 
 type CheckoutScreenRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -66,8 +67,8 @@ const CheckoutScreen = () => {
   }] : cartItems);
 
   const subtotal = checkoutItems.reduce((sum, item) => sum + item.price, 0);
-  const tax = Math.round(subtotal * 0.18);
-  const total = subtotal + tax;
+  const tax = calculateTax(subtotal);
+  const total = calculateTotal(subtotal);
 
   // Mark payment as failed in backend
   const markPaymentAsFailed = async (paymentId: string, reason: string) => {
@@ -107,6 +108,7 @@ const CheckoutScreen = () => {
       const userId = user?.id;
       const firstItem = checkoutItems[0];
       const courseId = firstItem.packId;
+      const isJammingRoom = firstItem.type === 'jamming_room' || route.params?.isJammingRoom;
       
       if (!userId) throw new Error('User ID is required for payment');
       if (!courseId) throw new Error('Course ID is required for payment');
@@ -138,12 +140,28 @@ const CheckoutScreen = () => {
         return;
       }
       
-      console.log(`[Checkout] Creating Razorpay order - userId: ${userId}, courseId: ${courseId}`);
+      console.log(`[Checkout] Creating Razorpay order - userId: ${userId}, courseId: ${courseId}, isJammingRoom: ${isJammingRoom}`);
+      
+      // Prepare request body
+      const requestBody: any = { userId, courseId };
+      
+      // Add jamming room data if applicable
+      if (isJammingRoom) {
+        requestBody.isJammingRoom = true;
+        requestBody.jammingRoomData = {
+          // Note: Price is determined by backend from environment variable for security
+          title: firstItem.title,
+          buildingId: (firstItem as any).buildingId,
+          date: (firstItem as any).date,
+          time: (firstItem as any).time,
+          duration: (firstItem as any).duration,
+        };
+      }
       
       const orderResponse = await fetch(getApiUrl('api/payments/razorpay/order'), {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ userId, courseId }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!orderResponse.ok) {
@@ -306,7 +324,7 @@ const CheckoutScreen = () => {
               <Image source={{ uri: item.thumbnailUrl }} style={styles.packThumbnail} />
               <View style={styles.packInfo}>
                 <Text style={styles.packTitle} numberOfLines={2}>{item.title}</Text>
-                <Text style={styles.packTeacher}>{item.teacher.name}</Text>
+                {item.teacher && <Text style={styles.packTeacher}>{item.teacher.name}</Text>}
                 <Text style={styles.packPrice}>₹{item.price}</Text>
               </View>
             </View>
@@ -322,7 +340,7 @@ const CheckoutScreen = () => {
               <Text style={styles.priceValue}>₹{subtotal}</Text>
             </View>
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>GST (18%)</Text>
+              <Text style={styles.priceLabel}>{getTaxPercentage()} GST</Text>
               <Text style={styles.priceValue}>₹{tax}</Text>
             </View>
             <View style={styles.divider} />

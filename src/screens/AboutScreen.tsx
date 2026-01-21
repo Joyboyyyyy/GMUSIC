@@ -73,7 +73,7 @@ const AboutScreen = () => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView>  
   );
 };
 

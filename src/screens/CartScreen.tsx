@@ -80,7 +80,7 @@ const CartScreen = () => {
               <Image source={{ uri: item.thumbnailUrl }} style={styles.itemThumbnail} />
               <View style={styles.itemInfo}>
                 <Text variant="label" numberOfLines={2} style={{ color: theme.text, marginBottom: SPACING.xxs }}>{item.title}</Text>
-                <Text variant="caption" style={{ color: theme.textSecondary, marginBottom: SPACING.xs }}>{item.teacher.name}</Text>
+                {item.teacher && <Text variant="caption" style={{ color: theme.textSecondary, marginBottom: SPACING.xs }}>{item.teacher.name}</Text>}
                 <Text variant="h4" style={{ color: theme.primary }}>₹{item.price}</Text>
               </View>
               <TouchableOpacity 

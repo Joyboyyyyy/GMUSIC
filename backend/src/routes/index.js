@@ -7,6 +7,7 @@ import slotRoutes from "./slot.routes.js";
 import bookingRoutes from "./booking.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import adminRoutes from "./admin.routes.js";
+import musicRoomRoutes from "./musicRoom.routes.js";
 
 const router = express.Router();
 
@@ -42,6 +43,9 @@ router.use("/notifications", notificationRoutes);
 
 // ADMIN ROUTES
 router.use("/admin", adminRoutes);
+
+// MUSIC ROOM ROUTES (Jamming Rooms)
+router.use("/music-rooms", musicRoomRoutes);
 
 export default router;
 

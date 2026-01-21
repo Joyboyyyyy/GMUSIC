@@ -9,9 +9,14 @@ export interface CartItem {
   price: number;
   thumbnailUrl: string;
   quantity: number;
-  teacher: {
+  teacher?: {
     name: string;
   };
+  type?: 'course' | 'jamming_room'; // Optional: identifies the type of item
+  buildingId?: string; // Optional: for jamming room bookings
+  date?: string; // Optional: for jamming room bookings
+  time?: string; // Optional: for jamming room bookings
+  duration?: number; // Optional: for jamming room bookings (in minutes)
 }
 
 interface CartState {

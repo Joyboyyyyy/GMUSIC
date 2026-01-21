@@ -479,6 +479,16 @@ export interface Teacher {
   coursesCount: number;
   instruments: string[];
   buildings: { id: string; name: string; city: string }[];
+  courses?: { id: string; name: string; instrument: string; previewVideoUrl?: string }[];
+  experience?: string;
+  specializations?: string[];
+  achievements?: string[];
+  teachingStyle?: string;
+  availability?: string;
+  joinedDate?: string;
+  totalHoursTaught?: number;
+  certifications?: string[];
+  languages?: string[];
 }
 
 export const teacherApi = {

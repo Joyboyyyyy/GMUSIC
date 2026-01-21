@@ -317,3 +317,161 @@ export const sendPasswordResetEmail = async (email, token) => {
     return null;
   }
 };
+
+
+/**
+ * Send invoice email with PDF attachment
+ * @param {string} paymentId - Payment ID
+ * @param {Buffer} pdfBuffer - PDF buffer
+ */
+export async function sendInvoiceEmail(paymentId, pdfBuffer) {
+  try {
+    // Import db to get payment details
+    const db = (await import('../lib/db.js')).default;
+    
+    const payment = await db.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        student: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!payment || !payment.student?.email) {
+      console.error('[Email] ❌ Cannot send invoice - payment or user email not found');
+      return null;
+    }
+
+    const userName = payment.student.name || 'Customer';
+    const userEmail = payment.student.email;
+    const invoiceNumber = `INV-${paymentId.slice(0, 8).toUpperCase()}`;
+    const invoiceDate = new Date(payment.createdAt).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const amount = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: payment.currency || 'INR',
+      minimumFractionDigits: 0,
+    }).format(payment.amount);
+
+    console.log(`[Email] Sending invoice to: ${userEmail}`);
+
+    const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; margin:0; padding:0; background:#f5f6f8; }
+          .box { max-width:600px; margin:30px auto; background:white; border-radius:12px; padding:32px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { text-align:center; margin-bottom:24px; border-bottom: 2px solid #7c3aed; padding-bottom: 16px; }
+          .logo { font-size:24px; font-weight:700; color:#7c3aed; }
+          .title { font-size:20px; font-weight:600; margin:20px 0 12px; color:#1f2937; }
+          .text { color:#4b5563; margin-bottom:16px; line-height:1.6; }
+          .details { background:#f9fafb; border-radius:8px; padding:16px; margin:20px 0; }
+          .detail-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb; }
+          .detail-row:last-child { border-bottom:none; }
+          .detail-label { color:#6b7280; font-size:14px; }
+          .detail-value { color:#1f2937; font-weight:500; font-size:14px; }
+          .amount { font-size:28px; font-weight:700; color:#7c3aed; text-align:center; margin:24px 0; }
+          .footer { margin-top:24px; padding-top:16px; border-top:1px solid #e5e7eb; text-align:center; color:#9ca3af; font-size:12px; }
+        </style>
+      </head>
+      <body>
+        <div class="box">
+          <div class="header">
+            <div class="logo">🎵 GRETEX MUSIC ROOM</div>
+          </div>
+          
+          <div class="title">Payment Receipt</div>
+          <div class="text">
+            Hi ${userName},<br/><br/>
+            Thank you for your payment! Your invoice is attached to this email.
+          </div>
+          
+          <div class="amount">${amount}</div>
+          
+          <div class="details">
+            <div class="detail-row">
+              <span class="detail-label">Invoice Number</span>
+              <span class="detail-value">${invoiceNumber}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Date</span>
+              <span class="detail-value">${invoiceDate}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Status</span>
+              <span class="detail-value" style="color:#10b981;">✓ ${payment.status}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Payment ID</span>
+              <span class="detail-value">${payment.gatewayPaymentId || paymentId.slice(0, 12)}</span>
+            </div>
+          </div>
+          
+          <div class="text" style="text-align:center;">
+            Please find your detailed invoice attached as a PDF.
+          </div>
+          
+          <div class="footer">
+            <p>Thank you for choosing Gretex Music Room!</p>
+            <p>For any queries, contact us at info@gretexindustries.com</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    `;
+
+    // Get transporter and check SMTP configuration
+    const transporterInstance = getTransporter();
+    const smtpHost = getEnvVar('SMTP_HOST', '');
+    const smtpUser = getEnvVar('SMTP_USER', '');
+
+    if (!smtpHost || !smtpUser) {
+      console.error('[Email] ❌ SMTP not configured - cannot send invoice email');
+      return null;
+    }
+
+    // Safely get 'from' address with fallback
+    const emailFrom = getEnvVar('EMAIL_FROM', '');
+    const smtpUserFrom = getEnvVar('SMTP_USER', '');
+    const fromAddress = emailFrom || smtpUserFrom || 'noreply@gretexindustries.com';
+
+    const mailOptions = {
+      from: fromAddress,
+      to: userEmail,
+      subject: `Your Invoice ${invoiceNumber} - Gretex Music Room`,
+      html,
+      attachments: [
+        {
+          filename: `invoice-${invoiceNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    };
+
+    try {
+      const info = await transporterInstance.sendMail(mailOptions);
+      const messageId = info?.messageId || 'unknown';
+      console.log(`[Email] ✅ Invoice email sent to ${userEmail} - MessageId: ${messageId}`);
+      return info;
+    } catch (sendError) {
+      const errorMessage = sendError?.message || 'Unknown send error';
+      console.error(`[Email] ❌ Invoice email send failed: ${errorMessage}`);
+      return null;
+    }
+  } catch (error) {
+    const errorMessage = error?.message || 'Unknown error';
+    console.error(`[Email] ❌ Error in sendInvoiceEmail: ${errorMessage}`);
+    return null;
+  }
+}

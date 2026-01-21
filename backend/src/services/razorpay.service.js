@@ -2,11 +2,138 @@ import crypto from "crypto";
 import db from "../lib/db.js";
 import { getRazorpay } from "../config/razorpay.js";
 
-export const createRazorpayOrder = async ({ userId, courseId }) => {
-  console.log(`[Razorpay Service] Creating order for userId: ${userId}, courseId: ${courseId}`);
+// Helper function to create jamming room orders
+const createJammingRoomOrder = async ({ userId, jammingRoomData }) => {
+  console.log(`[Razorpay Service] Creating jamming room order for userId: ${userId}`);
+  
+  const razorpay = getRazorpay();
+  if (!razorpay) {
+    throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env");
+  }
+
+  // Fetch user from database
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    console.error(`[Razorpay Service] User not found in database: ${userId}`);
+    throw new Error(`User not found. userId: ${userId}`);
+  }
+  console.log(`[Razorpay Service] User found: ${user.id}, email: ${user.email}`);
+  
+  // SECURITY FIX: Fetch price from database, not from frontend
+  // Get the building's jamming room pricing configuration
+  let roomPrice = 500; // Default fallback price
+  const roomTitle = jammingRoomData?.title || 'Jamming Room Booking';
+  
+  if (jammingRoomData?.buildingId) {
+    try {
+      // Fetch building to get pricing configuration
+      const building = await db.building.findUnique({
+        where: { id: jammingRoomData.buildingId },
+        select: { id: true, name: true },
+      });
+      
+      if (building) {
+        // TODO: Add a jammingRoomPricePerHour field to Building model
+        // For now, use environment variable or default
+        roomPrice = parseInt(process.env.JAMMING_ROOM_PRICE_PER_HOUR) || 500;
+        console.log(`[Razorpay Service] Using configured jamming room price: ₹${roomPrice} for building: ${building.name}`);
+      }
+    } catch (dbError) {
+      console.error(`[Razorpay Service] Error fetching building pricing:`, dbError);
+      // Fall back to default price
+    }
+  } else {
+    // Use environment variable or default if no building specified
+    roomPrice = parseInt(process.env.JAMMING_ROOM_PRICE_PER_HOUR) || 500;
+  }
+  
+  // SECURITY: Validate that frontend price matches backend price (if provided)
+  if (jammingRoomData?.price && Math.abs(jammingRoomData.price - roomPrice) > 0.01) {
+    console.warn(`[Razorpay Service] Price mismatch detected! Frontend: ₹${jammingRoomData.price}, Backend: ₹${roomPrice}`);
+    console.warn(`[Razorpay Service] Using backend price: ₹${roomPrice} (ignoring frontend price)`);
+  }
+  
+  console.log(`[Razorpay Service] Jamming room price: ₹${roomPrice}, title: ${roomTitle}`);
+  
+  // Validate price
+  if (!roomPrice || typeof roomPrice !== 'number' || roomPrice <= 0) {
+    console.error(`[Razorpay Service] Invalid jamming room price: ${roomPrice}`);
+    throw new Error(`Invalid jamming room price: ${roomPrice}. Price must be a positive number.`);
+  }
+
+  // Amount in paise (1 INR = 100 paise)
+  const amount = Math.round(roomPrice * 100);
+  console.log(`[Razorpay Service] Computed amount: ${amount} paise (₹${roomPrice})`);
+
+  if (amount < 100) {
+    throw new Error(`Amount too small: ₹${roomPrice}. Minimum is ₹1.`);
+  }
+
+  // Create Razorpay order
+  const receiptId = `rcpt_jamming_${Date.now()}`;
+  console.log(`[Razorpay Service] Creating Razorpay order - amount: ${amount}, currency: INR, receipt: ${receiptId}`);
+  
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount,
+      currency: "INR",
+      receipt: receiptId,
+      notes: { 
+        userId: user.id, 
+        type: 'jamming_room',
+        roomTitle: roomTitle,
+        userEmail: user.email,
+        buildingId: jammingRoomData?.buildingId || '',
+        date: jammingRoomData?.date || '',
+        time: jammingRoomData?.time || '',
+      },
+    });
+    console.log(`[Razorpay Service] Razorpay order created: ${order.id}`);
+  } catch (razorpayError) {
+    console.error(`[Razorpay Service] Razorpay API error:`, razorpayError);
+    if (razorpayError.error) {
+      console.error(`[Razorpay Service] Razorpay error details:`, JSON.stringify(razorpayError.error, null, 2));
+    }
+    throw new Error(razorpayError.error?.description || razorpayError.message || "Failed to create Razorpay order");
+  }
+
+  // Create payment record
+  console.log(`[Razorpay Service] Creating payment record for jamming room...`);
+  const payment = await db.payment.create({
+    data: { 
+      studentId: user.id, 
+      amount: roomPrice,
+      currency: 'INR',
+      status: 'PENDING',
+      gatewayOrderId: order.id,
+      slotIds: [], // Will be populated when slots are booked
+    },
+  });
+  console.log(`[Razorpay Service] Payment created: ${payment.id}`);
+
+  // Return response
+  const response = {
+    key: process.env.RAZORPAY_KEY_ID,
+    order,
+    enrollmentId: payment.id,
+    paymentId: payment.id,
+    course: {
+      id: `jamming_room_${Date.now()}`,
+      title: roomTitle,
+      price: roomPrice,
+    }
+  };
+
+  console.log(`[Razorpay Service] Jamming room order creation successful - orderId: ${order.id}, paymentId: ${payment.id}`);
+  return response;
+};
+
+export const createRazorpayOrder = async ({ userId, courseId, isJammingRoom, jammingRoomData }) => {
+  console.log(`[Razorpay Service] Creating order for userId: ${userId}, courseId: ${courseId}, isJammingRoom: ${isJammingRoom}`);
   
   // ===== INPUT VALIDATION =====
-  // Validate courseId - must be a non-empty string (UUID format)
+  // Validate courseId - must be a non-empty string (UUID format or jamming room ID)
   if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
     console.error(`[Razorpay Service] Invalid courseId: ${courseId} (type: ${typeof courseId})`);
     throw new Error(`Invalid courseId. Received: ${courseId}. Expected a valid UUID string.`);
@@ -25,12 +152,24 @@ export const createRazorpayOrder = async ({ userId, courseId }) => {
     throw new Error(`This is a demo course (ID: ${courseId}). Real payment requires a course from the database. Please use the test mode in the app.`);
   }
   
+  // Check if this is a jamming room booking (courseId starts with "slot-")
+  if (courseId.startsWith('slot-') || isJammingRoom) {
+    console.log(`[Razorpay Service] Detected jamming room booking`);
+    return await createJammingRoomOrder({ userId, jammingRoomData: jammingRoomData || { price: 500, title: 'Jamming Room Booking' } });
+  }
+  
   const razorpay = getRazorpay();
   if (!razorpay) {
     throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env");
   }
 
   // ===== DATABASE LOOKUP - SINGLE SOURCE OF TRUTH =====
+  // SECURITY: Price validation happens here - NEVER trust client-provided prices
+  // The database is the single source of truth for all pricing
+  // This prevents price manipulation attacks where users could:
+  // 1. Modify cart prices stored in CartItem table
+  // 2. Send manipulated prices from frontend
+  // 3. Exploit race conditions with price changes
   console.log(`[Razorpay Service] Fetching user and course from database...`);
   
   // Fetch user from database

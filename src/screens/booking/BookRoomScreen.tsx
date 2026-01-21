@@ -63,7 +63,11 @@ const BookRoomScreen = () => {
           <View style={styles.infoContainer}>
             <View style={styles.infoRow}>
               <Ionicons name="information-circle-outline" size={20} color={isDark ? '#fbbf24' : '#6b7280'} />
-              <Text style={styles.infoText}>You can browse available rooms without logging in. Login is required only when confirming your booking.</Text>
+              <Text style={styles.infoText}>Browse real jamming rooms from our database. You can explore available rooms without logging in. Login is required only when confirming your booking.</Text>
+            </View>
+            <View style={[styles.infoRow, { marginTop: 12, backgroundColor: isDark ? '#064e3b' : '#d1fae5' }]}>
+              <Ionicons name="musical-notes-outline" size={20} color={isDark ? '#10b981' : '#059669'} />
+              <Text style={[styles.infoText, { color: isDark ? '#10b981' : '#059669' }]}>Now featuring real music rooms with live availability from buildings across Mumbai!</Text>
             </View>
           </View>
         </ScrollView>

@@ -80,10 +80,23 @@ class BookingService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const total = cartItems.reduce((sum, item) => sum + item.priceAtAdd, 0);
+    // SECURITY: Always use current price from database, not stored priceAtAdd
+    // This prevents price manipulation and ensures users pay current prices
+    const itemsWithCurrentPrice = cartItems.map(item => {
+      const currentPrice = item.slot?.course?.pricePerSlot || item.slot?.course?.price || 0;
+      return {
+        ...item,
+        currentPrice, // Current price from database
+        priceAtAdd: item.priceAtAdd, // Historical price when added (for reference only)
+        priceChanged: Math.abs(currentPrice - item.priceAtAdd) > 0.01, // Flag if price changed
+      };
+    });
+
+    // Calculate total using CURRENT prices from database
+    const total = itemsWithCurrentPrice.reduce((sum, item) => sum + item.currentPrice, 0);
 
     return {
-      items: cartItems,
+      items: itemsWithCurrentPrice,
       total,
       itemCount: cartItems.length,
     };
@@ -330,6 +343,52 @@ class BookingService {
     return {
       status: 'WAITLIST',
       position: enrollment.waitlistPosition,
+    };
+  }
+
+  // Validate cart prices before checkout
+  // SECURITY: This ensures users cannot manipulate prices
+  async validateCartPrices(studentId) {
+    const cartItems = await db.cartItem.findMany({
+      where: { studentId },
+      include: {
+        slot: {
+          include: {
+            course: true,
+          },
+        },
+      },
+    });
+
+    const validationResults = cartItems.map(item => {
+      const currentPrice = item.slot?.course?.pricePerSlot || item.slot?.course?.price || 0;
+      const storedPrice = item.priceAtAdd;
+      const priceChanged = Math.abs(currentPrice - storedPrice) > 0.01;
+
+      return {
+        cartItemId: item.id,
+        slotId: item.slotId,
+        courseName: item.slot?.course?.name || 'Unknown',
+        storedPrice,
+        currentPrice,
+        priceChanged,
+        priceDifference: currentPrice - storedPrice,
+      };
+    });
+
+    const anyPriceChanged = validationResults.some(r => r.priceChanged);
+    const totalCurrentPrice = validationResults.reduce((sum, r) => sum + r.currentPrice, 0);
+    const totalStoredPrice = validationResults.reduce((sum, r) => sum + r.storedPrice, 0);
+
+    return {
+      valid: !anyPriceChanged,
+      items: validationResults,
+      totalCurrentPrice,
+      totalStoredPrice,
+      totalDifference: totalCurrentPrice - totalStoredPrice,
+      message: anyPriceChanged 
+        ? 'Some prices have changed since items were added to cart. Please review before checkout.'
+        : 'All prices are current and valid.',
     };
   }
 }

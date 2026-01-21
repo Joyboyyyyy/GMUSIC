@@ -88,7 +88,7 @@ class TeacherService {
             // Get student count
             studentCount = await db.slotEnrollment.count({
               where: {
-                timeSlot: {
+                slot: {
                   teacherId: teacher.id,
                 },
                 status: {
@@ -189,7 +189,7 @@ class TeacherService {
       // Get student count
       const studentCount = await db.slotEnrollment.count({
         where: {
-          timeSlot: { teacherId },
+          slot: { teacherId },
           status: { in: ['CONFIRMED', 'COMPLETED'] },
         },
       });

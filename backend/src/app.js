@@ -14,6 +14,7 @@ import feedbackRoutes from "./routes/feedback.routes.js";
 import searchRoutes from "./routes/search.routes.js";
 import teacherRoutes from "./routes/teacher.routes.js";
 import invoiceRoutes from "./routes/invoice.routes.js";
+import musicRoomRoutes from "./routes/musicRoom.routes.js";
 import { verifyEmailRedirect, resetPasswordRedirect } from './controllers/redirect.controller.js';
 
 const app = express();
@@ -139,6 +140,7 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/teachers", teacherRoutes);
 app.use("/api/invoices", invoiceRoutes);
+app.use("/api/music-rooms", musicRoomRoutes);
 
 // Test email endpoint (for debugging SMTP)
 app.get('/api/test-email', async (req, res) => {

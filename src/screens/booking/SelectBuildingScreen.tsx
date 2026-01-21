@@ -35,23 +35,42 @@ const SelectBuildingScreen = () => {
   const loadBuildings = async () => {
     try {
       setLoading(true); setError(false);
-      // Fetch buildings that have music rooms available for booking
-      const response = await api.get('/api/buildings/with-music-rooms');
-      const buildingsData = response.data?.data || response.data || [];
-      const activeBuildings = buildingsData.filter((building: Building) => building.isActive !== false);
-      setBuildings(activeBuildings);
+      
+      // Fetch buildings that have music rooms available for jamming room booking
+      const response = await api.get('/api/music-rooms/buildings');
+      
+      if (response.data.success && response.data.data) {
+        const buildingsData = response.data.data;
+        const activeBuildings = buildingsData.filter((building: Building) => building.isActive !== false);
+        setBuildings(activeBuildings);
+        console.log('[SelectBuildingScreen] ✅ Loaded jamming room buildings:', activeBuildings.length);
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (err: any) {
-      console.error('[SelectBuildingScreen] Error loading buildings:', err);
+      console.error('[SelectBuildingScreen] Error loading jamming room buildings:', err);
+      
       // Fallback to regular buildings endpoint
       try {
-        const fallbackResponse = await api.get('/api/buildings/public');
+        console.log('[SelectBuildingScreen] 🔄 Trying fallback buildings endpoint...');
+        const fallbackResponse = await api.get('/api/buildings/with-music-rooms');
         const fallbackData = fallbackResponse.data?.data || fallbackResponse.data || [];
-        setBuildings(fallbackData.filter((b: Building) => b.isActive !== false));
+        const activeBuildings = fallbackData.filter((b: Building) => b.isActive !== false);
+        setBuildings(activeBuildings);
+        console.log('[SelectBuildingScreen] ✅ Loaded buildings from fallback:', activeBuildings.length);
       } catch (fallbackErr) {
+        console.error('[SelectBuildingScreen] Fallback also failed:', fallbackErr);
         setError(true);
-        Alert.alert('Error', 'Failed to load buildings. Please try again later.');
+        
+        if (err.code === 'ERR_NETWORK') {
+          Alert.alert('Network Error', 'Unable to connect to server. Please check your internet connection.');
+        } else {
+          Alert.alert('Error', 'Failed to load jamming room buildings. Please try again later.');
+        }
       }
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleBuildingSelect = (buildingId: string) => { 

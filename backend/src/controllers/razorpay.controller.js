@@ -18,7 +18,7 @@ export const createOrder = async (req, res) => {
   }
 
   try {
-    const { userId, courseId } = req.body;
+    const { userId, courseId, isJammingRoom, jammingRoomData } = req.body;
     
     // Validate input
     if (!userId || !courseId) {
@@ -28,8 +28,8 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    console.log(`[Razorpay Controller] Creating order for userId: ${userId}, courseId: ${courseId}`);
-    const result = await createRazorpayOrder({ userId, courseId });
+    console.log(`[Razorpay Controller] Creating order for userId: ${userId}, courseId: ${courseId}, isJammingRoom: ${isJammingRoom}`);
+    const result = await createRazorpayOrder({ userId, courseId, isJammingRoom, jammingRoomData });
     
     // Check if result contains an error (from fallback logic)
     if (result.error) {

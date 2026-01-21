@@ -7,7 +7,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   PackDetail: { packId: string };
   TrackPlayer: { packId: string; trackId: string };
-  Checkout: { pack?: MusicPack; items?: CartItem[] };
+  Checkout: { pack?: MusicPack; items?: CartItem[]; isJammingRoom?: boolean };
   Cart: undefined;
   EditProfile: undefined;
   NotificationSettings: undefined;
