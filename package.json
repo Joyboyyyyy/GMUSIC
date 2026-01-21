@@ -12,7 +12,6 @@
     "@maplibre/maplibre-react-native": "^10.4.2",
     "@prisma/client": "^5.13.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-google-signin/google-signin": "^16.0.0",
     "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
