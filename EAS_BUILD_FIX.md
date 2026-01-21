@@ -8,49 +8,77 @@ Missing `google-services.json` file required for Google Sign-In integration on A
 
 ## Solution Applied
 
-### 1. Added Google Services Plugin
-Updated `android/build.gradle` to include Google Services classpath:
-```gradle
-classpath('com.google.gms:google-services:4.4.0')
-```
+### Complete Removal of Google Sign-In (Temporary)
 
-### 2. Applied Plugin in App Build
-Updated `android/app/build.gradle` to apply the plugin:
-```gradle
-apply plugin: "com.google.gms.google-services"
-```
+To allow the build to succeed without Firebase configuration, we completely removed Google Sign-In:
 
-### 3. Created Placeholder google-services.json
-Created `android/app/google-services.json` with placeholder values.
+1. **Removed Package from Dependencies**
+   - Removed `@react-native-google-signin/google-signin` from `package.json`
+   - Ran `npm install` to update `package-lock.json`
 
-## IMPORTANT: Get Your Real google-services.json
+2. **Disabled Google Services Plugin**
+   - Commented out `apply plugin: "com.google.gms.google-services"` in `android/app/build.gradle`
+   - Commented out `classpath('com.google.gms:google-services:4.4.0')` in `android/build.gradle`
 
-The placeholder file will NOT work for production. You MUST replace it with your real file from Firebase:
+3. **Disabled Plugin in App Config**
+   - Commented out Google Sign-In plugin in `app.config.js`
 
-### Steps to Get Real File:
+4. **Code Already Prepared**
+   - Google Sign-In imports already commented out in `LoginScreen.tsx`
 
-1. **Go to Firebase Console:**
-   https://console.firebase.google.com/
+## IMPORTANT: To Re-enable Google Sign-In
 
-2. **Select Your Project:**
-   - Find "Gretex Music Room" project
-   - Or create a new project if you don't have one
+When you want to add Google Sign-In back to your app:
 
-3. **Add Android App (if not already added):**
-   - Click "Add app" → Android
-   - Package name: `com.gretexmusicroom.app`
-   - App nickname: "Gretex Music Room"
-   - SHA-1: (optional for now, needed for release)
+### Steps to Re-enable:
 
-4. **Download google-services.json:**
-   - Go to Project Settings → Your Apps
-   - Find your Android app
-   - Click "Download google-services.json"
+1. **Install Firebase & Get Configuration**
+   - Go to Firebase Console: https://console.firebase.google.com/
+   - Create/select "Gretex Music Room" project
+   - Add Android app with package: `com.gretexmusicroom.app`
+   - Download real `google-services.json`
 
-5. **Replace the Placeholder:**
-   - Copy the downloaded file
-   - Replace `android/app/google-services.json`
-   - Commit to git
+2. **Reinstall Package**
+   ```bash
+   npm install @react-native-google-signin/google-signin
+   ```
+
+3. **Replace google-services.json**
+   - Copy downloaded file to `android/app/google-services.json`
+   - Replace the placeholder file
+
+4. **Uncomment Plugin Lines**
+   
+   In `android/build.gradle`:
+   ```gradle
+   classpath('com.google.gms:google-services:4.4.0')
+   ```
+   
+   In `android/app/build.gradle`:
+   ```gradle
+   apply plugin: "com.google.gms.google-services"
+   ```
+   
+   In `app.config.js`:
+   ```javascript
+   [
+     "@react-native-google-signin/google-signin",
+     {
+       iosUrlScheme: "com.googleusercontent.apps.600437075384-kk1rfkb9jmmqgm3413iddam4hrhf717k"
+     }
+   ]
+   ```
+
+5. **Uncomment Code**
+   - Uncomment Google Sign-In imports and code in `LoginScreen.tsx`
+
+6. **Rebuild**
+   ```bash
+   git add .
+   git commit -m "Re-enable Google Sign-In with Firebase"
+   git push
+   eas build --platform android --profile preview
+   ```
 
 ### Get SHA-1 Certificate Fingerprint (for Release):
 
@@ -64,12 +92,12 @@ cd android
 
 Add this SHA-1 to Firebase Console → Project Settings → Your Apps → Android → Add fingerprint
 
-## Alternative: Remove Google Sign-In (Not Recommended)
+## Alternative: Keep Google Sign-In Disabled
 
-If you don't want to use Google Sign-In, you need to:
-1. Remove `@react-native-google-signin/google-signin` from dependencies
-2. Remove Google Sign-In code from your app
-3. Remove the plugin from `app.config.js`
+If you don't want to use Google Sign-In at all:
+- The current setup is complete - no further action needed
+- Users can still sign up/login with email and password
+- All other features work normally
 
 ## Retry Build
 
@@ -108,4 +136,6 @@ After build succeeds:
 3. Verify authentication works correctly
 
 ## Status
-⚠️ **Action Required**: Replace placeholder google-services.json with real file from Firebase Console
+✅ **Google Sign-In Removed**: Package completely removed from project  
+✅ **Build Should Succeed**: All Google dependencies eliminated  
+⚠️ **Google Sign-In Disabled**: Users must use email/password authentication
