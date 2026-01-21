@@ -103,7 +103,7 @@ export default {
       },
   
       extra: {
-        apiUrl: process.env.EXPO_PUBLIC_API_URL,
+        apiUrl: process.env.EXPO_PUBLIC_API_URL || "https://gmusic-ivdh.onrender.com",
         eas: {
           projectId: "1fbc2dfb-9dbd-4f70-9059-0115a156ff04"
         }

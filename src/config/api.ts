@@ -2,17 +2,23 @@
  * API Configuration
  * 
  * Single source of truth: EXPO_PUBLIC_API_URL environment variable
+ * For standalone builds, this comes from app.config.js extra.apiUrl
  * 
- * Set in .env file:
+ * Set in .env file for development:
  * EXPO_PUBLIC_API_URL=http://192.168.1.12:3000
  */
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+import Constants from 'expo-constants';
+
+// Try to get API URL from multiple sources
+const API_URL = 
+  process.env.EXPO_PUBLIC_API_URL || // Development with .env
+  Constants.expoConfig?.extra?.apiUrl || // Standalone build
+  'https://gmusic-ivdh.onrender.com'; // Fallback to production
 
 if (!API_URL) {
-  console.error('❌ EXPO_PUBLIC_API_URL is missing');
-  console.error('   Set EXPO_PUBLIC_API_URL in .env file');
-  throw new Error('EXPO_PUBLIC_API_URL is missing');
+  console.error('❌ API_URL could not be determined');
+  console.error('   Falling back to production URL');
 }
 
 // Remove trailing slashes
@@ -20,6 +26,7 @@ const API_BASE_URL = API_URL.replace(/\/+$/, '');
 
 // Log ONCE at startup
 console.log('🔗 API Base URL:', API_BASE_URL);
+console.log('🔗 Source:', process.env.EXPO_PUBLIC_API_URL ? 'env' : Constants.expoConfig?.extra?.apiUrl ? 'config' : 'fallback');
 
 /**
  * Get full API URL for a given path
