@@ -8,7 +8,7 @@ if (!API_BASE_URL || API_BASE_URL === '') {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000, // 60 seconds - increased for Render cold starts
   headers: {
     'Content-Type': 'application/json',
   },
@@ -54,7 +54,7 @@ api.interceptors.response.use(
       console.error('  5. Clear Expo cache: npx expo start --clear');
       
       // Enhance error message for better user feedback
-      error.userMessage = `Cannot connect to server at ${API_BASE_URL}. Please ensure the backend server is running.`;
+      error.userMessage = `Cannot connect to server at ${API_BASE_URL}. Please ensure:\n1. Backend server is running\n2. Network connection is active\n3. Server is accessible from this device\n\nNote: First request may take 30-60 seconds as server wakes up.`;
     }
     return Promise.reject(error);
   }
