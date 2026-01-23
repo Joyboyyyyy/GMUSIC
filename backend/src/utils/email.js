@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 // Helper function to safely get environment variable with fallback
 function getEnvVar(key, fallback = '') {
@@ -6,59 +6,45 @@ function getEnvVar(key, fallback = '') {
   return value !== undefined && value !== null ? String(value) : fallback;
 }
 
-// Lazy transporter creation
-let transporter = null;
+// Lazy Resend client creation
+let resendClient = null;
 
-function getTransporter() {
-  if (transporter !== null) {
-    return transporter;
+function getResendClient() {
+  if (resendClient !== null) {
+    return resendClient;
   }
 
-  const smtpHost = getEnvVar('SMTP_HOST', '');
-  const smtpPort = Number(getEnvVar('SMTP_PORT', '587'));
-  const smtpUser = getEnvVar('SMTP_USER', '');
-  const smtpPass = getEnvVar('SMTP_PASS', '');
-  const smtpSecure = getEnvVar('SMTP_SECURE', 'false') === 'true';
+  const apiKey = getEnvVar('RESEND_API_KEY', '');
 
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    console.warn('[Email] ⚠️  SMTP configuration incomplete');
+  if (!apiKey) {
+    console.warn('[Email] ⚠️  RESEND_API_KEY not configured');
     return null;
   }
 
-  transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpSecure,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
-
-  return transporter;
+  resendClient = new Resend(apiKey);
+  return resendClient;
 }
 
 export async function verifySMTPConnection() {
   try {
-    const transporterInstance = getTransporter();
-    if (!transporterInstance) {
-      console.warn('[Email] ⚠️  SMTP not configured');
+    const client = getResendClient();
+    if (!client) {
+      console.warn('[Email] ⚠️  Resend not configured');
       return false;
     }
-    await transporterInstance.verify();
-    console.log('[Email] ✅ SMTP connection verified');
+    console.log('[Email] ✅ Resend API configured');
     return true;
   } catch (error) {
-    console.error('[Email] ❌ SMTP verification failed:', error.message);
+    console.error('[Email] ❌ Resend verification failed:', error.message);
     return false;
   }
 }
 
 export async function sendVerificationEmail(to, token, name) {
   try {
-    const transporterInstance = getTransporter();
-    if (!transporterInstance) {
-      console.error('[Email] ❌ SMTP not configured');
+    const client = getResendClient();
+    if (!client) {
+      console.error('[Email] ❌ Resend not configured');
       return;
     }
 
@@ -110,7 +96,7 @@ export async function sendVerificationEmail(to, token, name) {
 
     const emailFrom = getEnvVar('EMAIL_FROM', 'noreply@gretexindustries.com');
 
-    await transporterInstance.sendMail({
+    await client.emails.send({
       from: emailFrom,
       to: to,
       subject: 'Verify your Gretex Music Room account',
@@ -132,9 +118,9 @@ export async function sendVerificationEmail(to, token, name) {
 
 export const sendPasswordResetEmail = async (email, token) => {
   try {
-    const transporterInstance = getTransporter();
-    if (!transporterInstance) {
-      console.error('[Email] ❌ SMTP not configured');
+    const client = getResendClient();
+    if (!client) {
+      console.error('[Email] ❌ Resend not configured');
       return null;
     }
 
@@ -186,7 +172,7 @@ export const sendPasswordResetEmail = async (email, token) => {
 
     const emailFrom = getEnvVar('EMAIL_FROM', 'noreply@gretexindustries.com');
 
-    const info = await transporterInstance.sendMail({
+    const info = await client.emails.send({
       from: emailFrom,
       to: email,
       subject: 'Reset your password',
@@ -204,9 +190,9 @@ export const sendPasswordResetEmail = async (email, token) => {
 
 export async function sendInvoiceEmail(paymentId, pdfBuffer) {
   try {
-    const transporterInstance = getTransporter();
-    if (!transporterInstance) {
-      console.error('[Email] ❌ SMTP not configured');
+    const client = getResendClient();
+    if (!client) {
+      console.error('[Email] ❌ Resend not configured');
       return null;
     }
 
@@ -315,7 +301,7 @@ export async function sendInvoiceEmail(paymentId, pdfBuffer) {
 
     const emailFrom = getEnvVar('EMAIL_FROM', 'noreply@gretexindustries.com');
 
-    const info = await transporterInstance.sendMail({
+    const info = await client.emails.send({
       from: emailFrom,
       to: userEmail,
       subject: `Your Invoice ${invoiceNumber} - Gretex Music Room`,
@@ -324,7 +310,6 @@ export async function sendInvoiceEmail(paymentId, pdfBuffer) {
         {
           filename: `invoice-${invoiceNumber}.pdf`,
           content: pdfBuffer,
-          contentType: 'application/pdf',
         },
       ],
     });
