@@ -1,0 +1,59 @@
+# ========================================
+# RENDER ENVIRONMENT VARIABLES - FINAL
+# ========================================
+# Copy these EXACTLY into your Render dashboard
+
+# Server Configuration
+PORT=3002
+NODE_ENV=production
+BACKEND_URL=https://gmusic-ivdh.onrender.com
+
+# Supabase Configuration
+SUPABASE_URL=https://pvqrcsirdmoemjwgijmx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cXJjc2lyZG1vZW1qd2dpam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNzQxNDEsImV4cCI6MjA4Mzk1MDE0MX0.08TaoqsyyGrQgycW5RjCeyQC3E3B1iG8dzOj-d-ilDY
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cXJjc2lyZG1vZW1qd2dpam14Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODM3NDE0MSwiZXhwIjoyMDgzOTUwMTQxfQ.7htZJosvaUTq8xYwQR3M8XA9dNZqGIzEuw_gp3txlVI
+
+# Database Connection
+DATABASE_URL=postgresql://postgres.pvqrcsirdmoemjwgijmx:Rasmalai9819@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+DIRECT_URL=postgresql://postgres.pvqrcsirdmoemjwgijmx:Rasmalai9819@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-musi-platform-2024
+JWT_EXPIRES_IN=7d
+
+# Password Security
+PASSWORD_PEPPER=ROU1nfeOcNhrNfbX8mvCN7U75MF9HzYjQRmgB0Sw6qI=
+
+# Payment Gateway
+RAZORPAY_KEY_ID=rzp_test_RroKNAAHykIoLe
+RAZORPAY_KEY_SECRET=DKjjVU4pKP0n7qJ6kQ3qUPZt
+
+# Frontend URL (CORS)
+FRONTEND_URL=exp://192.168.2.131:8081
+
+# Google Sign-in
+GOOGLE_CLIENT_ID=600437075384-kk1rfkb9jmmqgm3413iddam4hrhf717k.apps.googleusercontent.com
+
+# Email Service (Resend SMTP)
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_USER=resend
+SMTP_PASS=re_Y4JRneGT_JJds2icjGiN3ePQbhWkwF1Y9
+SMTP_SECURE=true
+EMAIL_FROM=noreply@gretexindustries.com
+APP_SCHEME=gretexmusicroom://
+
+# Production Settings
+BYPASS_EMAIL_VERIFICATION=false
+SKIP_EMAIL_ERRORS=false
+
+# Jamming Room Pricing
+JAMMING_ROOM_PRICE_PER_HOUR=500
+
+# ========================================
+# CRITICAL FIXES:
+# ========================================
+# 1. Added BACKEND_URL (was missing!)
+# 2. Set NODE_ENV=production
+# 3. Set BYPASS_EMAIL_VERIFICATION=false for production
+# 4. All other values match your local backend/.env

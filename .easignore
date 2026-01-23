@@ -1,0 +1,12 @@
+# Ignore large files and folders to speed up upload
+node_modules/
+.git/
+.expo/
+android/.gradle/
+android/app/build/
+android/build/
+backend/
+*.md
+*.txt
+.VSCodeCounter/
+.vscode/

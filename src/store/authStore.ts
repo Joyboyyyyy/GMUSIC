@@ -98,7 +98,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
         console.log('[AuthStore] API BASE URL:', API_BASE_URL);
         console.log('[AuthStore] Attempting login to:', `${API_BASE_URL}/api/auth/login`);
         
-        const response = await api.post('/api/auth/login', { email, password });
+        // Increase timeout for login to handle Render cold starts
+        const response = await api.post('/api/auth/login', { email, password }, {
+          timeout: 90000, // 90 seconds (handles Render cold start)
+        });
         
         // Backend returns: { success: true, message: "...", data: { user, token } }
         const responseData = response.data;
@@ -159,6 +162,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       set({ loading: true });
       try {
         console.log('[AuthStore] Starting signup for:', email);
+        // Increase timeout for signup to handle Render cold starts (free tier takes 30-60s to wake up)
         const response = await api.post('/api/auth/register', { 
           name, 
           email, 
@@ -169,6 +173,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
           buildingCode,
           buildingId, // New: direct building ID from search
           proofDocument,
+        }, {
+          timeout: 90000, // 90 seconds for signup (handles Render cold start)
         });
         
         // Backend returns: { success: true, message: "Verification email sent" }
@@ -199,10 +205,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
         // Enhanced error handling with network diagnostics
         let errorMessage = 'Signup failed';
         
-        if (e.message === 'Network Error' || e.code === 'ERR_NETWORK' || !e.response) {
-          // Network error - server unreachable
+        if (e.message === 'Network Error' || e.code === 'ERR_NETWORK' || e.code === 'ECONNABORTED' || !e.response) {
+          // Network error or timeout - server unreachable or cold start
           const { API_BASE_URL } = await import('../config/api');
-          errorMessage = `Cannot connect to server at ${API_BASE_URL}. Please ensure:\n1. Backend server is running\n2. Network connection is active\n3. Server is accessible from this device`;
+          
+          if (e.code === 'ECONNABORTED') {
+            // Timeout error - likely Render cold start
+            errorMessage = `Server is waking up (this can take 30-60 seconds on first request). Please try again in a moment.`;
+          } else {
+            errorMessage = `Cannot connect to server at ${API_BASE_URL}. Please ensure:\n1. Backend server is running\n2. Network connection is active\n3. Server is accessible from this device\n\nNote: First request may take 30-60 seconds as server wakes up.`;
+          }
+          
           console.error('[AuthStore] Network Error Details:');
           console.error('  - API Base URL:', API_BASE_URL);
           console.error('  - Request URL:', '/api/auth/register');
