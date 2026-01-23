@@ -1,30 +1,6 @@
 import PDFDocument from 'pdfkit';
 import db from '../lib/db.js';
-import nodemailer from 'nodemailer';
-
-// Helper function to safely get environment variable
-function getEnvVar(key, fallback = '') {
-  const value = process.env[key];
-  return value !== undefined && value !== null ? String(value) : fallback;
-}
-
-// Get email transporter
-function getEmailTransporter() {
-  const smtpHost = getEnvVar('SMTP_HOST', '');
-  const smtpPort = Number(getEnvVar('SMTP_PORT', '587'));
-  const smtpUser = getEnvVar('SMTP_USER', '');
-  const smtpPass = getEnvVar('SMTP_PASS', '');
-
-  return nodemailer.createTransport({
-    host: smtpHost || 'localhost',
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
-}
+import { sendInvoiceEmail } from '../utils/email.js';
 
 class InvoiceService {
   /**
@@ -291,61 +267,8 @@ class InvoiceService {
       if (sendEmail) {
         try {
           console.log('[InvoiceService] Attempting to send invoice email...');
-          
-          // Get payment with user info
-          const payment = await db.payment.findUnique({
-            where: { id: paymentId },
-            include: {
-              student: {
-                select: { name: true, email: true },
-              },
-            },
-          });
-
-          if (!payment?.student?.email) {
-            console.error('[InvoiceService] No user email found');
-          } else {
-            const userEmail = payment.student.email;
-            const userName = payment.student.name || 'Customer';
-            const invoiceNumber = `INV-${paymentId.slice(0, 8).toUpperCase()}`;
-            const invoiceDate = new Date(payment.createdAt).toLocaleDateString('en-IN');
-            const amount = `₹${payment.amount.toLocaleString('en-IN')}`;
-
-            const html = `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #7c3aed;">🎵 Gretex Music Room - Invoice</h2>
-                <p>Hi ${userName},</p>
-                <p>Thank you for your payment! Your invoice is attached.</p>
-                <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                  <p><strong>Invoice:</strong> ${invoiceNumber}</p>
-                  <p><strong>Date:</strong> ${invoiceDate}</p>
-                  <p><strong>Amount:</strong> ${amount}</p>
-                  <p><strong>Status:</strong> ✓ ${payment.status}</p>
-                </div>
-                <p style="color: #6b7280; font-size: 12px;">For queries, contact info@gretexindustries.com</p>
-              </div>
-            `;
-
-            const transporter = getEmailTransporter();
-            const fromAddress = getEnvVar('EMAIL_FROM', '') || getEnvVar('SMTP_USER', '');
-
-            const mailOptions = {
-              from: fromAddress,
-              to: userEmail,
-              subject: `Your Invoice ${invoiceNumber} - Gretex Music Room`,
-              html,
-              attachments: [{
-                filename: `invoice-${invoiceNumber}.pdf`,
-                content: pdfBuffer,
-                contentType: 'application/pdf',
-              }],
-            };
-
-            console.log('[InvoiceService] Sending email to:', userEmail);
-            const info = await transporter.sendMail(mailOptions);
-            console.log('[InvoiceService] ✅ Email sent:', info.messageId);
-            emailSent = true;
-          }
+          const result = await sendInvoiceEmail(paymentId, pdfBuffer);
+          emailSent = !!result;
         } catch (emailError) {
           console.error('[InvoiceService] Failed to send invoice email:', emailError.message);
         }
