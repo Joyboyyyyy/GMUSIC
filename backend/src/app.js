@@ -142,7 +142,7 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/music-rooms", musicRoomRoutes);
 
-// Test email endpoint (for debugging SMTP)
+// Test email endpoint (for debugging email delivery)
 app.get('/api/test-email', async (req, res) => {
   try {
     const { to } = req.query;
@@ -150,63 +150,46 @@ app.get('/api/test-email', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Please provide ?to=your@email.com' });
     }
 
-    const nodemailer = await import('nodemailer');
+    const { Resend } = await import('resend');
     
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = parseInt(process.env.SMTP_PORT || '465');
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const emailFrom = process.env.EMAIL_FROM || smtpUser;
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const emailFrom = process.env.EMAIL_FROM || 'noreply@gretexindustries.com';
 
-    console.log('[Test Email] SMTP Config:');
-    console.log(`  Host: ${smtpHost}`);
-    console.log(`  Port: ${smtpPort}`);
-    console.log(`  User: ${smtpUser}`);
+    console.log('[Test Email] Resend Config:');
+    console.log(`  API Key: ${resendApiKey ? 'SET' : 'NOT SET'}`);
     console.log(`  From: ${emailFrom}`);
     console.log(`  To: ${to}`);
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
+    if (!resendApiKey) {
       return res.status(500).json({ 
         success: false, 
-        error: 'SMTP not configured',
-        config: { smtpHost, smtpPort, smtpUser: smtpUser ? 'SET' : 'NOT SET', smtpPass: smtpPass ? 'SET' : 'NOT SET' }
+        error: 'RESEND_API_KEY not configured',
+        config: { resendApiKey: resendApiKey ? 'SET' : 'NOT SET' }
       });
     }
 
-    const transporter = nodemailer.default.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
-
-    // Verify connection
-    console.log('[Test Email] Verifying SMTP connection...');
-    await transporter.verify();
-    console.log('[Test Email] ✅ SMTP connection verified');
+    const resend = new Resend(resendApiKey);
 
     // Send test email
-    const info = await transporter.sendMail({
+    console.log('[Test Email] Sending test email via Resend...');
+    const info = await resend.emails.send({
       from: emailFrom,
       to: to,
       subject: 'Test Email from Gretex Music Room',
       html: `
         <h1>🎵 Test Email</h1>
         <p>This is a test email from Gretex Music Room backend.</p>
-        <p>If you received this, your SMTP configuration is working!</p>
+        <p>If you received this, your Resend configuration is working!</p>
         <p>Time: ${new Date().toISOString()}</p>
       `,
     });
 
-    console.log('[Test Email] ✅ Email sent:', info.messageId);
+    console.log('[Test Email] ✅ Email sent:', info.id);
     
     res.json({ 
       success: true, 
-      message: 'Test email sent!',
-      messageId: info.messageId,
+      message: 'Test email sent via Resend!',
+      messageId: info.id,
       to: to
     });
   } catch (error) {
