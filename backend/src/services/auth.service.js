@@ -109,7 +109,7 @@ class AuthService {
         profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7c3aed&color=fff`,
         emailVerified: false,
         phone: phone || null,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        dateOfBirth: (dateOfBirth && dateOfBirth.trim()) ? new Date(dateOfBirth) : null,
         // Building assignment
         buildingId: requestedBuildingId,
         // Location data
@@ -309,8 +309,15 @@ class AuthService {
     }
 
     // b. If not verified → reject
-    if (user.emailVerified === false) {
+    // Check if email verification bypass is enabled (development mode)
+    const bypassEmailVerification = process.env.BYPASS_EMAIL_VERIFICATION === 'true';
+    
+    if (!bypassEmailVerification && user.emailVerified === false) {
       throw new Error(genericError);
+    }
+    
+    if (bypassEmailVerification && user.emailVerified === false) {
+      console.log('[Auth Service] ⚠️  EMAIL VERIFICATION CHECK BYPASSED (DEVELOPMENT MODE)');
     }
 
     // Password is correct - reset failed login attempts
@@ -468,12 +475,15 @@ class AuthService {
     if (yearsOfExperience !== undefined) updateData.yearsOfExperience = yearsOfExperience;
     
     // Handle profile picture - sync both fields
+    // NOTE: `profilePicture` is the PRIMARY authoritative field for storing profile picture URLs
+    // NOTE: `avatar` is maintained for BACKWARD COMPATIBILITY with legacy clients
+    // BEHAVIOR: Both fields are synchronized on every update to ensure consistency across all platforms
     if (profilePicture) {
-      updateData.profilePicture = profilePicture;
-      updateData.avatar = profilePicture; // Keep avatar in sync
+      updateData.profilePicture = profilePicture; // Primary field - authoritative source
+      updateData.avatar = profilePicture; // Sync to avatar for backward compatibility
     } else if (avatar) {
-      updateData.avatar = avatar;
-      updateData.profilePicture = avatar; // Keep profilePicture in sync
+      updateData.avatar = avatar; // Accept avatar parameter for backward compatibility
+      updateData.profilePicture = avatar; // Sync to profilePicture (primary field)
     }
 
     const user = await db.user.update({

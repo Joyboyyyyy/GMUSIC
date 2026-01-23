@@ -85,6 +85,26 @@ export const login = async (req, res) => {
   }
 };
 
+/**
+ * Get User Profile
+ * 
+ * PROFILE PICTURE FIELD USAGE:
+ * - Response includes both `profilePicture` (PRIMARY) and `avatar` (LEGACY) fields
+ * - Both fields contain identical values
+ * - Clients should use `profilePicture` field for display
+ * - The `avatar` field is maintained for backward compatibility only
+ * 
+ * Response Example:
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "id": "uuid",
+ *     "profilePicture": "https://storage.url/image.jpg",  // Use this field
+ *     "avatar": "https://storage.url/image.jpg",          // Legacy field
+ *     ...
+ *   }
+ * }
+ */
 export const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -98,6 +118,21 @@ export const getProfile = async (req, res) => {
   }
 };
 
+/**
+ * Update User Profile
+ * 
+ * PROFILE PICTURE FIELD USAGE:
+ * - Use `profilePicture` field for new implementations (PRIMARY field)
+ * - The `avatar` field is still supported for backward compatibility (LEGACY field)
+ * - Both fields are automatically synchronized - updating either will update both
+ * 
+ * Request Body Examples:
+ * - Recommended: { "profilePicture": "https://storage.url/image.jpg" }
+ * - Legacy: { "avatar": "https://storage.url/image.jpg" }
+ * 
+ * Response always includes both fields with identical values:
+ * { "profilePicture": "url", "avatar": "url" }
+ */
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -176,13 +211,18 @@ export const resetPasswordGet = async (req, res) => {
             .box { max-width:500px; margin:50px auto; background:white; border-radius:8px; padding:24px; }
             h1 { color:#1f2937; margin-bottom:8px; }
             .subtitle { color:#6b7280; margin-bottom:24px; }
-            input { width:100%; padding:12px; margin-bottom:16px; border:1px solid #e5e7eb; border-radius:8px; font-size:16px; box-sizing:border-box; }
-            button { width:100%; padding:12px; background:#5b21b6; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; }
+            .input-wrapper { position:relative; margin-bottom:16px; }
+            input { width:100%; padding:12px 40px 12px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:16px; box-sizing:border-box; }
+            .eye-icon { position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:20px; color:#6b7280; user-select:none; }
+            button { width:100%; padding:12px; background:#5b21b6; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
             button:hover { background:#7c3aed; }
             button:disabled { opacity:0.5; cursor:not-allowed; }
             .error { color:#ef4444; margin-top:8px; font-size:14px; }
-            .success { color:#10b981; margin-top:8px; font-size:14px; }
-            .help { color:#6b7280; font-size:12px; margin-top:4px; }
+            .success { color:#10b981; margin-top:16px; font-size:14px; text-align:center; }
+            .help { color:#6b7280; font-size:12px; margin-top:4px; margin-bottom:16px; }
+            .login-link { display:inline-block; margin-top:16px; padding:12px 24px; background:#1f2937; color:white; text-decoration:none; border-radius:8px; font-weight:600; }
+            .login-link:hover { background:#374151; }
+            .success-box { text-align:center; }
           </style>
         </head>
         <body>
@@ -190,24 +230,43 @@ export const resetPasswordGet = async (req, res) => {
             <h1>Reset Password</h1>
             <p class="subtitle">Enter your new password below</p>
             <form id="resetForm">
-              <input type="password" id="password" placeholder="New Password" required>
+              <div class="input-wrapper">
+                <input type="password" id="password" placeholder="New Password" required>
+                <span class="eye-icon" onclick="togglePassword('password', this)">👁️</span>
+              </div>
               <div class="help">Password must be at least 6 characters with uppercase, lowercase, number, and special character</div>
-              <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+              <div class="input-wrapper">
+                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                <span class="eye-icon" onclick="togglePassword('confirmPassword', this)">👁️</span>
+              </div>
               <div id="error" class="error"></div>
-              <div id="success" class="success"></div>
               <button type="submit" id="submitBtn">Reset Password</button>
             </form>
+            <div id="successBox" class="success-box" style="display:none;">
+              <div class="success">✅ Password reset successful! Please login with your new password.</div>
+              <a href="gretexmusicroom://login" class="login-link">Go to Login</a>
+            </div>
           </div>
           <script>
+            function togglePassword(inputId, icon) {
+              const input = document.getElementById(inputId);
+              if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = '🙈';
+              } else {
+                input.type = 'password';
+                icon.textContent = '👁️';
+              }
+            }
+            
             const form = document.getElementById('resetForm');
             const errorDiv = document.getElementById('error');
-            const successDiv = document.getElementById('success');
+            const successBox = document.getElementById('successBox');
             const submitBtn = document.getElementById('submitBtn');
             
             form.addEventListener('submit', async (e) => {
               e.preventDefault();
               errorDiv.textContent = '';
-              successDiv.textContent = '';
               submitBtn.disabled = true;
               submitBtn.textContent = 'Resetting...';
               
@@ -231,8 +290,8 @@ export const resetPasswordGet = async (req, res) => {
                 const data = await response.json();
                 
                 if (response.ok) {
-                  successDiv.textContent = 'Password reset successfully! You can now close this page.';
                   form.style.display = 'none';
+                  successBox.style.display = 'block';
                 } else {
                   errorDiv.textContent = data.message || 'Password reset failed';
                   submitBtn.disabled = false;
@@ -352,6 +411,41 @@ export const testEmail = async (req, res) => {
       success: false, 
       error: err.message 
     });
+  }
+};
+
+// Refresh Token Controller
+export const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return errorResponse(res, 'Refresh token is required', 400);
+    }
+
+    // For now, just generate a new token with the same payload
+    // In production, you'd verify the refresh token from database
+    const { verifyToken } = await import('../utils/jwt.js');
+    const decoded = verifyToken(refreshToken);
+
+    if (!decoded) {
+      return errorResponse(res, 'Invalid or expired refresh token', 401);
+    }
+
+    // Generate new access token
+    const { generateToken } = await import('../utils/jwt.js');
+    const newToken = generateToken({ 
+      id: decoded.id, 
+      email: decoded.email 
+    });
+
+    return successResponse(res, { 
+      token: newToken,
+      refreshToken: refreshToken // Return same refresh token
+    }, 'Token refreshed successfully');
+  } catch (error) {
+    console.error('[Auth Controller] Refresh token error:', error);
+    return errorResponse(res, 'Failed to refresh token', 401);
   }
 };
 

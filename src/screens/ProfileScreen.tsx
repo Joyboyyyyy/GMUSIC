@@ -65,6 +65,10 @@ const ProfileScreen = () => {
           {/* Profile Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
+              {/* Profile picture fallback order: 
+                  1. profilePicture (primary/authoritative field)
+                  2. avatar (backward compatibility)
+                  3. default avatar URL (when both are empty) */}
               <Image source={{ uri: user?.profilePicture || user?.avatar || 'https://i.pravatar.cc/300' }} style={styles.avatar} />
               <Text variant="h3" style={{ color: theme.text, marginBottom: SPACING.xxs }}>{user?.name}</Text>
               <Text variant="body" style={{ color: theme.textSecondary }}>{user?.email}</Text>

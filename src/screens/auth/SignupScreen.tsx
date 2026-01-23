@@ -10,6 +10,7 @@ import { useAuthStore } from "../../store/authStore";
 import { AuthStackParamList } from "../../navigation/types";
 import { setItem } from "../../utils/storage";
 import BuildingDropdown, { Building } from "../../components/BuildingDropdown";
+import { validateDOB, formatDOBForBackend } from "../../utils/dateValidation";
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, "Signup">;
 
@@ -21,6 +22,7 @@ const SignupScreen = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [dobError, setDobError] = useState("");
   const [address, setAddress] = useState("");
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [proofDoc, setProofDoc] = useState<{name: string; uri: string; base64: string} | null>(null);
@@ -78,14 +80,48 @@ const SignupScreen = () => {
 
   const formatDOB = (d: string) => { if (!d) return null; const [day, month, year] = d.split("/"); return year + "-" + (month?.padStart(2, "0")) + "-" + (day?.padStart(2, "0")); };
 
+  const handleDOBChange = (text: string) => {
+    // Format as DD/MM/YYYY
+    let formatted = text.replace(/[^\d]/g, "");
+    if (formatted.length > 2) formatted = formatted.slice(0, 2) + "/" + formatted.slice(2);
+    if (formatted.length > 5) formatted = formatted.slice(0, 5) + "/" + formatted.slice(5);
+    formatted = formatted.slice(0, 10);
+    
+    setDateOfBirth(formatted);
+    
+    // Validate if complete
+    if (formatted.length === 10) {
+      const validation = validateDOB(formatted);
+      if (!validation.isValid) {
+        setDobError(validation.error || "Invalid date");
+      } else {
+        setDobError("");
+      }
+    } else {
+      setDobError("");
+    }
+  };
+
   const handleSignup = async () => {
+    // Validate DOB before submission
+    if (dateOfBirth.length === 10) {
+      const validation = validateDOB(dateOfBirth);
+      if (!validation.isValid) {
+        Alert.alert("Invalid Date of Birth", validation.error || "Please enter a valid date");
+        return;
+      }
+    } else if (dateOfBirth.length > 0) {
+      Alert.alert("Invalid Date of Birth", "Please complete the date in DD/MM/YYYY format");
+      return;
+    }
+    
     try {
       await setItem("postAuthRedirect", JSON.stringify({ route: "Main", screen: "Home" }));
       const result = await signup(
         name, 
         email, 
         password, 
-        formatDOB(dateOfBirth), 
+        formatDOBForBackend(dateOfBirth), 
         address.trim() || null, 
         phone.trim() || null, 
         null, // buildingCode (legacy)
@@ -116,7 +152,8 @@ const SignupScreen = () => {
             <Text style={styles.label}>Phone Number</Text>
             <TextInput style={styles.input} placeholder="10-digit phone" placeholderTextColor="#9ca3af" value={phone} onChangeText={(t) => setPhone(t.replace(/\D/g,"").slice(0,10))} keyboardType="phone-pad" maxLength={10} />
             <Text style={styles.label}>Date of Birth</Text>
-            <TextInput style={styles.input} placeholder="DD/MM/YYYY" placeholderTextColor="#9ca3af" value={dateOfBirth} onChangeText={(t) => { let f=t.replace(/[^\d]/g,""); if(f.length>2)f=f.slice(0,2)+"/"+f.slice(2); if(f.length>5)f=f.slice(0,5)+"/"+f.slice(5); setDateOfBirth(f.slice(0,10)); }} keyboardType="numeric" maxLength={10} />
+            <TextInput style={[styles.input, dobError && {borderColor: "#fca5a5", borderWidth: 2}]} placeholder="DD/MM/YYYY" placeholderTextColor="#9ca3af" value={dateOfBirth} onChangeText={handleDOBChange} keyboardType="numeric" maxLength={10} />
+            {dobError && <Text style={styles.err}>{dobError}</Text>}
             <Text style={styles.label}>Address</Text>
             <TextInput style={[styles.input,{minHeight:60}]} placeholder="Enter address" placeholderTextColor="#9ca3af" value={address} onChangeText={setAddress} multiline />
             

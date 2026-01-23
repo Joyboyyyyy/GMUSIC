@@ -94,84 +94,141 @@ class MusicRoomService {
 
   // Get available time slots for a music room
   async getAvailableSlots(buildingId, date = null) {
-    // VALIDATION: Verify building exists and is active
-    const building = await db.building.findUnique({
-      where: { id: buildingId },
-      select: { 
-        id: true, 
-        isActive: true, 
-        approvalStatus: true,
-        name: true,
-      },
-    });
-
-    if (!building) {
-      throw new Error('Building not found');
-    }
-
-    if (!building.isActive || building.approvalStatus !== 'ACTIVE') {
-      throw new Error('Building is not active or approved');
-    }
-
-    const targetDate = date ? new Date(date) : new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // Get all music rooms for the building
-    const musicRooms = await db.musicRoom.findMany({
-      where: {
-        buildingId,
-        isActive: true,
-      },
-    });
-
-    if (musicRooms.length === 0) {
-      return [];
-    }
-
-    // SECURITY: Get price from environment variable or use default
-    // TODO: Add jammingRoomPricePerHour field to Building model for per-building pricing
-    const pricePerHour = parseInt(process.env.JAMMING_ROOM_PRICE_PER_HOUR) || 500;
-
-    // FIX: Use deterministic availability based on actual bookings
-    // TODO: Query actual SlotEnrollment table for real availability
-    // For now, return all slots as available (deterministic behavior)
-    const timeSlots = [];
-    const baseDate = new Date(targetDate);
-    
-    for (let hour = 9; hour <= 20; hour++) {
-      const slotTime = new Date(baseDate);
-      slotTime.setHours(hour, 0, 0, 0);
-      
-      const endTime = new Date(slotTime);
-      endTime.setHours(hour + 1, 0, 0, 0);
-
-      // FIX: Deterministic availability - all slots available by default
-      // In production, this should query the booking database
-      const isAvailable = true;
-
-      timeSlots.push({
-        id: `slot-${buildingId}-${hour}-${targetDate.toISOString().split('T')[0]}`,
-        time: slotTime.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: true 
-        }),
-        startTime: slotTime.toISOString(),
-        endTime: endTime.toISOString(),
-        available: isAvailable,
-        buildingId,
-        buildingName: building.name,
-        date: targetDate.toISOString().split('T')[0],
-        price: pricePerHour, // Price from backend configuration
-        duration: 60, // 1 hour
+    try {
+      // VALIDATION: Verify building exists and is active
+      const building = await db.building.findUnique({
+        where: { id: buildingId },
+        select: { 
+          id: true, 
+          isActive: true, 
+          approvalStatus: true,
+          name: true,
+        },
       });
-    }
 
-    return timeSlots;
+      if (!building) {
+        throw new Error('Building not found');
+      }
+
+      if (!building.isActive || building.approvalStatus !== 'ACTIVE') {
+        throw new Error('Building is not active or approved');
+      }
+
+      const targetDate = date ? new Date(date) : new Date();
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Get all music rooms for the building
+      const musicRooms = await db.musicRoom.findMany({
+        where: {
+          buildingId,
+          isActive: true,
+        },
+      });
+
+      if (musicRooms.length === 0) {
+        return [];
+      }
+
+      // SECURITY: Get price from environment variable or use default
+      const pricePerHour = parseInt(process.env.JAMMING_ROOM_PRICE_PER_HOUR) || 500;
+
+      // Get all courses for this building ONLY
+      // This ensures we only check course conflicts within the same building
+      const courses = await db.course.findMany({
+        where: {
+          buildingId, // IMPORTANT: Only courses in THIS building
+          isActive: true,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const courseIds = courses.map(c => c.id);
+
+      // Get all time slots for courses in THIS building on the specified date
+      // This query ensures we only check conflicts within the same building
+      let existingSlots = [];
+      if (courseIds.length > 0) {
+        existingSlots = await db.timeSlot.findMany({
+          where: {
+            courseId: {
+              in: courseIds, // Only course IDs from THIS building
+            },
+            slotDate: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+            isActive: true,
+          },
+          include: {
+            slotEnrollments: {
+              where: {
+                status: {
+                  in: ['CONFIRMED', 'COMPLETED'],
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Create a map of booked slots by hour
+      // IMPORTANT: Mark slot as unavailable if ANY course enrollment exists for that time
+      // This prevents double-booking: if a student has a course at 9am, 
+      // the jamming room cannot be booked at 9am
+      const bookedSlots = new Set();
+      existingSlots.forEach(slot => {
+        const hour = new Date(slot.startTime).getHours();
+        // Check if slot has ANY confirmed/completed enrollments
+        // OR if the slot is marked as fully booked
+        if (slot.slotEnrollments.length > 0 || slot.currentEnrollment > 0) {
+          bookedSlots.add(hour);
+        }
+      });
+
+      // Generate time slots from 9 AM to 8 PM
+      const timeSlots = [];
+      const baseDate = new Date(targetDate);
+      
+      for (let hour = 9; hour <= 20; hour++) {
+        const slotTime = new Date(baseDate);
+        slotTime.setHours(hour, 0, 0, 0);
+        
+        const endTime = new Date(slotTime);
+        endTime.setHours(hour + 1, 0, 0, 0);
+
+        // Check if this hour is booked
+        const isAvailable = !bookedSlots.has(hour);
+
+        timeSlots.push({
+          id: `slot-${buildingId}-${hour}-${targetDate.toISOString().split('T')[0]}`,
+          time: slotTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+          }),
+          startTime: slotTime.toISOString(),
+          endTime: endTime.toISOString(),
+          available: isAvailable,
+          buildingId,
+          buildingName: building.name,
+          date: targetDate.toISOString().split('T')[0],
+          price: pricePerHour,
+          duration: 60, // 1 hour
+        });
+      }
+
+      console.log(`[MusicRoomService] Generated ${timeSlots.length} slots for building ${buildingId}, ${bookedSlots.size} booked`);
+      return timeSlots;
+    } catch (error) {
+      console.error('[MusicRoomService] Error in getAvailableSlots:', error);
+      throw error;
+    }
   }
 
   // Get music room details by ID

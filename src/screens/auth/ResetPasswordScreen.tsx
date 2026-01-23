@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -12,6 +11,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../../navigation/types";
+import Input from "../../components/ui/Input";
 import api from "../../utils/api";
 
 type ResetPasswordNavigationProp = NativeStackNavigationProp<AuthStackParamList, "ResetPassword">;
@@ -61,13 +61,12 @@ const ResetPasswordScreen = () => {
       });
 
       Alert.alert(
-        "Success",
-        "Your password has been reset successfully. You can now login with your new password.",
+        "Password Reset Successful",
+        "Your password has been reset. Please login with your new password.",
         [
           {
-            text: "OK",
+            text: "Go to Login",
             onPress: () => {
-              // Navigate to Login screen
               navigation.navigate("Login");
             },
           },
@@ -92,28 +91,26 @@ const ResetPasswordScreen = () => {
               Enter your new password below.
             </Text>
 
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="New Password"
-              placeholderTextColor="#9ca3af"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
+              containerStyle={{ marginBottom: 16 }}
             />
 
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="Confirm Password"
-              placeholderTextColor="#9ca3af"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
+              containerStyle={{ marginBottom: 16 }}
             />
 
             {password.length > 0 && !isPasswordValid && (

@@ -39,36 +39,26 @@ const SelectSlotScreen = () => {
     const currentBuildingId = buildingId || storeBuildingId;
     if (currentBuildingId && !storeBuildingId) useBookingStore.getState().setBuildingId(currentBuildingId);
     
-    // Always load time slots, even without buildingId (use mock data)
     if (currentBuildingId) {
       loadTimeSlots(currentBuildingId);
     } else {
-      // Load mock data when no buildingId is available
-      console.log('[SelectSlotScreen] No buildingId, using mock data');
-      const mockSlots: TimeSlot[] = [
-        { time: '09:00 AM', available: true },
-        { time: '10:00 AM', available: true },
-        { time: '11:00 AM', available: false },
-        { time: '12:00 PM', available: true },
-        { time: '01:00 PM', available: false },
-        { time: '02:00 PM', available: true },
-        { time: '03:00 PM', available: true },
-        { time: '04:00 PM', available: false },
-        { time: '05:00 PM', available: true },
-        { time: '06:00 PM', available: true },
-        { time: '07:00 PM', available: false },
-        { time: '08:00 PM', available: true },
-      ];
-      setTimeSlots(mockSlots);
+      console.log('[SelectSlotScreen] No buildingId available');
+      setTimeSlots([]);
     }
   }, [selectedDate, buildingId, storeBuildingId]);
 
   const loadTimeSlots = async (buildingIdParam?: string) => {
     const currentBuildingId = buildingIdParam || buildingId || storeBuildingId;
-    if (!currentBuildingId) { Alert.alert('Error', 'Building ID is missing'); return; }
+    if (!currentBuildingId) { 
+      Alert.alert('Error', 'Building ID is missing'); 
+      return; 
+    }
     
     try {
-      setLoading(true); setError(false);
+      setLoading(true); 
+      setError(false);
+      
+      console.log('[SelectSlotScreen] Fetching real-time slots from database for building:', currentBuildingId);
       
       // Fetch real jamming room slots from the database
       const response = await api.get(`/api/music-rooms/buildings/${currentBuildingId}/slots`, { 
@@ -84,40 +74,25 @@ const SelectSlotScreen = () => {
           duration: slot.duration,
         }));
         setTimeSlots(slots);
-        console.log('[SelectSlotScreen] ✅ Loaded REAL jamming room slots from database:', slots.length);
+        console.log('[SelectSlotScreen] ✅ Loaded real-time slots from database:', slots.length, 'slots');
+        console.log('[SelectSlotScreen] Booked slots:', slots.filter((s: any) => !s.available).length);
       } else {
         throw new Error('Invalid response format');
       }
     } catch (err: any) {
-      console.error('[SelectSlotScreen] Error loading jamming room slots:', err);
+      console.error('[SelectSlotScreen] Error loading slots:', err);
+      setError(true);
+      setTimeSlots([]);
       
-      // Use mock data when API fails (404 or any error)
-      console.log('[SelectSlotScreen] Using mock data for jamming room slots');
-      const mockSlots: TimeSlot[] = [
-        { time: '09:00 AM', available: true },
-        { time: '10:00 AM', available: true },
-        { time: '11:00 AM', available: false },
-        { time: '12:00 PM', available: true },
-        { time: '01:00 PM', available: false },
-        { time: '02:00 PM', available: true },
-        { time: '03:00 PM', available: true },
-        { time: '04:00 PM', available: false },
-        { time: '05:00 PM', available: true },
-        { time: '06:00 PM', available: true },
-        { time: '07:00 PM', available: false },
-        { time: '08:00 PM', available: true },
-      ];
-      
-      setTimeSlots(mockSlots);
-      setError(false); // Don't show error since we have mock data
-      
-      // Show different messages based on error type
+      // Show error to user
       if (err.response?.status === 404) {
-        console.log('[SelectSlotScreen] 📍 Building not found, using demo slots');
+        Alert.alert('Error', 'Building not found or has no music rooms');
+      } else if (err.response?.status === 500) {
+        Alert.alert('Error', 'Server error loading slots. Please try again.');
       } else if (err.code === 'ERR_NETWORK') {
-        Alert.alert('Notice', 'Using demo jamming room slots. Backend server not available.', [{ text: 'OK' }]);
+        Alert.alert('Error', 'Network error. Please check your connection.');
       } else {
-        console.log('[SelectSlotScreen] 🔄 API error, using demo slots as fallback');
+        Alert.alert('Error', 'Failed to load time slots. Please try again.');
       }
     } finally { 
       setLoading(false); 
@@ -230,10 +205,31 @@ const SelectSlotScreen = () => {
               <View style={styles.slotsGrid}>
                 {timeSlots.map((slot, index) => {
                   const isSelected = selectedSlot === slot.time;
+                  const isBooked = !slot.available;
                   return (
-                    <TouchableOpacity key={`${slot.time}-${index}`} style={[styles.slotCard, !slot.available && styles.slotCardDisabled, isSelected && styles.slotCardSelected]} onPress={() => slot.available && handleSlotSelect(slot.time)} disabled={!slot.available}>
-                      <Text style={[styles.slotText, !slot.available && styles.slotTextDisabled, isSelected && styles.slotTextSelected]}>{slot.time}</Text>
-                      {!slot.available && <Ionicons name="close-circle" size={16} color={theme.textMuted} />}
+                    <TouchableOpacity 
+                      key={`${slot.time}-${index}`} 
+                      style={[
+                        styles.slotCard, 
+                        isBooked && styles.slotCardBooked,
+                        isSelected && styles.slotCardSelected
+                      ]} 
+                      onPress={() => slot.available && handleSlotSelect(slot.time)} 
+                      disabled={isBooked}
+                      activeOpacity={isBooked ? 1 : 0.7}
+                    >
+                      <Text style={[
+                        styles.slotText, 
+                        isBooked && styles.slotTextBooked, 
+                        isSelected && styles.slotTextSelected
+                      ]}>
+                        {slot.time}
+                      </Text>
+                      {isBooked && (
+                        <View style={styles.bookedBadge}>
+                          <Text style={styles.bookedText}>Booked</Text>
+                        </View>
+                      )}
                       {isSelected && slot.available && <Ionicons name="checkmark-circle" size={16} color={theme.primary} />}
                     </TouchableOpacity>
                   );
@@ -280,10 +276,25 @@ const createStyles = (theme: ReturnType<typeof getTheme>, isDark: boolean) => St
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   slotCard: { width: '48%', padding: 16, borderRadius: 12, backgroundColor: theme.card, borderWidth: 2, borderColor: theme.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   slotCardSelected: { borderColor: theme.primary, backgroundColor: isDark ? '#312e81' : '#faf5ff' },
-  slotCardDisabled: { opacity: 0.5, backgroundColor: theme.surfaceVariant },
+  slotCardBooked: { 
+    backgroundColor: isDark ? '#422006' : '#fff7ed', 
+    borderColor: isDark ? '#ea580c' : '#fb923c',
+    opacity: 0.8,
+  },
   slotText: { fontSize: 14, fontWeight: '600', color: theme.text },
   slotTextSelected: { color: theme.primary },
-  slotTextDisabled: { color: theme.textMuted },
+  slotTextBooked: { color: isDark ? '#fb923c' : '#ea580c' },
+  bookedBadge: {
+    backgroundColor: isDark ? '#ea580c' : '#fb923c',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  bookedText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   footer: { padding: 20, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border },
   bookingSummary: { marginBottom: 12 },
   summaryText: { fontSize: 14, color: theme.textSecondary, textAlign: 'center' },

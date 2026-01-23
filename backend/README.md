@@ -136,6 +136,20 @@ Server will run on `http://localhost:3000`
 | GET | `/me` | Get current user profile | Yes |
 | PUT | `/me` | Update user profile | Yes |
 
+#### Profile Picture Fields
+
+**Important:** The API uses two fields for profile pictures to maintain backward compatibility:
+
+- **`profilePicture`** (PRIMARY) - The authoritative field for profile picture URLs. All clients should use this field for displaying and updating profile pictures.
+- **`avatar`** (DEPRECATED) - Maintained for backward compatibility with legacy clients. This field is automatically synchronized with `profilePicture` on every update.
+
+**Best Practices:**
+- ✅ Use `profilePicture` in all new code
+- ✅ Display `profilePicture` with fallback to `avatar` for backward compatibility
+- ✅ Send `profilePicture` when updating profile pictures
+- ⚠️ Both fields are synchronized automatically - updating either field updates both
+- ⚠️ `avatar` field will be removed in a future API version
+
 ### Courses (`/api/courses`)
 
 | Method | Endpoint | Description | Auth Required |
@@ -185,11 +199,70 @@ Response:
   "success": true,
   "message": "Registration successful",
   "data": {
-    "user": { ... },
+    "user": {
+      "id": "user_123",
+      "email": "student@example.com",
+      "name": "John Doe",
+      "profilePicture": "https://ui-avatars.com/api/?name=John+Doe&background=random",
+      "avatar": "https://ui-avatars.com/api/?name=John+Doe&background=random",
+      ...
+    },
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
 ```
+
+### Get User Profile
+
+```bash
+GET /api/auth/me
+Authorization: Bearer <token>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "user_123",
+    "email": "student@example.com",
+    "name": "John Doe",
+    "profilePicture": "https://storage.example.com/profiles/user_123.jpg",
+    "avatar": "https://storage.example.com/profiles/user_123.jpg",
+    "role": "STUDENT",
+    ...
+  }
+}
+```
+
+**Note:** Both `profilePicture` and `avatar` fields are returned for backward compatibility. Always use `profilePicture` as the primary field.
+
+### Update User Profile
+
+```bash
+PUT /api/auth/me
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "profilePicture": "https://storage.example.com/profiles/new-photo.jpg"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "id": "user_123",
+    "email": "student@example.com",
+    "name": "John Smith",
+    "profilePicture": "https://storage.example.com/profiles/new-photo.jpg",
+    "avatar": "https://storage.example.com/profiles/new-photo.jpg",
+    ...
+  }
+}
+```
+
+**Note:** When you update `profilePicture`, the `avatar` field is automatically synchronized. Both fields will always have the same value.
 
 ### Login
 

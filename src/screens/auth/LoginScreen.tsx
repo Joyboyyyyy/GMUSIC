@@ -41,6 +41,7 @@ const LoginScreen = () => {
   const navigation = useNavigation<LoginNav>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const { login, loginWithCredentials, loginWithApple, redirectPath, clearRedirectPath, loading } = useAuthStore();
 
@@ -212,14 +213,26 @@ const LoginScreen = () => {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry={true}
-                value={password}
-                onChangeText={setPassword}
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#6b7280"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -315,6 +328,9 @@ const styles = StyleSheet.create({
   inputContainer: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '600', color: '#fff', marginBottom: 8 },
   input: { backgroundColor: '#fff', borderRadius: 12, padding: 16, fontSize: 16, color: '#1f2937' },
+  passwordContainer: { position: 'relative' },
+  passwordInput: { paddingRight: 50 },
+  eyeButton: { position: 'absolute', right: 16, top: 16, padding: 4 },
   button: { backgroundColor: '#1f2937', borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 12 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   linkButton: { marginTop: 24, alignItems: 'center' },

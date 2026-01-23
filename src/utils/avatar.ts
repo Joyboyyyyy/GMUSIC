@@ -73,21 +73,22 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
     const avatarUrl = urlData.publicUrl;
     console.log('[Avatar] Public URL:', avatarUrl);
     
-    // Update user's avatar URL in database via backend API
-    console.log('[Avatar] Updating user profile with new avatar URL...');
-    console.log('[Avatar] Avatar URL to save:', avatarUrl);
+    // Update user's profilePicture URL in database via backend API
+    // Using profilePicture as the primary field - backend will sync to avatar for backward compatibility
+    console.log('[Avatar] Updating user profilePicture with new URL...');
+    console.log('[Avatar] profilePicture URL to save:', avatarUrl);
     try {
-      const response = await api.put('/api/auth/me', { avatar: avatarUrl });
+      const response = await api.put('/api/auth/me', { profilePicture: avatarUrl });
       console.log('[Avatar] Profile update response:', JSON.stringify(response.data));
       if (response.data?.success) {
-        console.log('[Avatar] Profile updated successfully in database');
+        console.log('[Avatar] profilePicture field updated successfully in database');
       } else {
-        console.warn('[Avatar] Profile update response not successful:', response.data);
+        console.warn('[Avatar] profilePicture update response not successful:', response.data);
       }
     } catch (apiError: any) {
-      console.error('[Avatar] Failed to update profile via API:', apiError.message);
+      console.error('[Avatar] Failed to update profilePicture field via API:', apiError.message);
       console.error('[Avatar] API Error details:', apiError.response?.data);
-      // Don't throw - the image is uploaded, just profile update failed
+      // Don't throw - the image is uploaded, just profilePicture field update failed
     }
     
     // Clean up old avatars for this user (keep only latest)
