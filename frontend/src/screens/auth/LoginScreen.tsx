@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -188,15 +189,16 @@ const LoginScreen = () => {
 
   return (
     <LinearGradient colors={['#4840a4', '#6b5fb3', '#8b7ec4']} style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20 }}
-          showsVerticalScrollIndicator={false}
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20 }}
+            showsVerticalScrollIndicator={false}
+          >
           {/* Dark Mode Toggle */}
           <TouchableOpacity style={styles.darkModeToggle}>
             <Ionicons name="moon" size={24} color="#fff" />
@@ -287,6 +289,7 @@ const LoginScreen = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      </SafeAreaView>
     </LinearGradient>
   );
 };

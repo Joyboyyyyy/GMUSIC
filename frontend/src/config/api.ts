@@ -11,10 +11,10 @@
 import Constants from 'expo-constants';
 
 // Try to get API URL from multiple sources
-const API_URL = 
-  process.env.EXPO_PUBLIC_API_URL || // Development with .env
-  Constants.expoConfig?.extra?.apiUrl || // Standalone build
-  'https://gmusic-ivdh.onrender.com'; // Fallback to production
+const API_URL =   process.env.EXPO_PUBLIC_API_URL
+  // process.env.EXPO_PUBLIC_API_URL || // Development with .env
+  // Constants.expoConfig?.extra?.apiUrl || // Standalone build
+  // 'https://gmusic-ivdh.onrender.com'; // Fallback to production
 
 if (!API_URL) {
   console.error('❌ API_URL could not be determined');

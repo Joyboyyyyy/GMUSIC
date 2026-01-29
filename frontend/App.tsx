@@ -1,6 +1,6 @@
 import React, { useEffect, useState, ErrorInfo, ReactNode } from 'react';
 import { NavigationContainer, LinkingOptions, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -117,7 +117,11 @@ export default function App() {
             onReady={() => console.log('[App] Navigation ready')}
             onStateChange={() => console.log('[App] Navigation state changed')}
           >
-            <StatusBar style={isDark ? 'light' : 'dark'} />
+            <StatusBar 
+              style={isDark ? 'light' : 'dark'} 
+              backgroundColor="transparent"
+              translucent={true}
+            />
             <RootNavigator />
             <ToastContainer />
           </NavigationContainer>
