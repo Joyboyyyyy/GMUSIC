@@ -1,0 +1,125 @@
+GRETEX MUSIC ROOM - PROJECT STRUCTURE
+=====================================
+
+ROOT DIRECTORY STRUCTURE (CLEAN & ORGANIZED)
+=============================================
+
+gretex-music-room/
+├── frontend/                          # React Native mobile app
+│   ├── src/
+│   ├── android/
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── app.config.js
+│   └── ...
+│
+├── backend/                           # Node.js Express API
+│   ├── src/
+│   ├── prisma/
+│   ├── package.json
+│   ├── .env
+│   └── ...
+│
+├── docs/                              # Documentation & scripts
+│   ├── TYPESCRIPT_FIX_INSTRUCTIONS.txt
+│   ├── fix-vscode-typescript.ps1
+│   ├── PROJECT_STRUCTURE.txt
+│   └── ...
+│
+├── supabase/                          # Supabase configuration
+│   └── .temp/
+│
+├── .kiro/                             # Kiro specs & steering
+│   ├── specs/
+│   └── steering/
+│
+├── .vscode/                           # VS Code configuration
+│   ├── settings.json
+│   └── launch.json
+│
+├── .git/                              # Git repository
+├── .gitignore                         # Git ignore rules
+├── .env                               # Root environment variables
+├── package.json                       # Workspace root (npm workspaces)
+├── package-lock.json                  # Dependency lock
+└── gretex-music-room.code-workspace   # VS Code workspace file
+
+
+FILES TO KEEP AT ROOT:
+======================
+
+✅ package.json              - Workspace management
+✅ package-lock.json         - Dependency lock
+✅ .env                       - Root environment config
+✅ .gitignore                 - Git ignore rules
+✅ .vscode/                   - VS Code settings
+✅ .kiro/                     - Kiro development files
+✅ docs/                      - Documentation
+✅ supabase/                  - Supabase config
+✅ gretex-music-room.code-workspace - VS Code workspace
+
+
+FILES REMOVED (CLEANUP):
+========================
+
+❌ node_modules/              - Removed (each project has its own)
+❌ backend/.expo/             - Removed (not needed for backend)
+
+
+RUNNING THE PROJECT:
+====================
+
+1. INSTALL ALL DEPENDENCIES:
+   npm run install:all
+
+2. START DEVELOPMENT (both frontend & backend):
+   npm run dev
+
+3. START ONLY FRONTEND:
+   npm run dev:frontend
+
+4. START ONLY BACKEND:
+   npm run dev:backend
+
+5. BUILD FRONTEND:
+   npm run build:frontend
+
+6. CLEAN ALL NODE_MODULES:
+   npm run clean
+
+
+ENVIRONMENT VARIABLES:
+======================
+
+Root .env:
+  - Shared configuration if needed
+  - Can be used by both frontend and backend
+
+frontend/.env:
+  - Frontend-specific variables
+  - API endpoints, feature flags, etc.
+
+backend/.env:
+  - Backend-specific variables
+  - Database URLs, API keys, secrets, etc.
+
+
+WORKSPACE BENEFITS:
+===================
+
+✅ Single npm install command for all projects
+✅ Shared scripts for development workflow
+✅ Unified VS Code workspace
+✅ Easy to manage multiple projects
+✅ Clean separation of concerns
+✅ Scalable structure for future services
+
+
+NOTES:
+======
+
+- Each project (frontend/backend) has its own node_modules
+- Root node_modules only contains workspace management tools
+- All development happens in frontend/ or backend/ directories
+- Documentation and scripts are centralized in docs/
+- Use gretex-music-room.code-workspace to open the entire project in VS Code

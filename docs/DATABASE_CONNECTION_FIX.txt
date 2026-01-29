@@ -1,0 +1,142 @@
+DATABASE CONNECTION POOL FIX
+============================
+
+PROBLEM:
+========
+Error: "MaxClientsInSessionMode: max clients reached - in Session mode max clients are limited to pool_size"
+
+This error occurs when:
+1. Too many database connections are being opened
+2. Connections are not being properly closed/reused
+3. Using direct connection (port 5432) instead of connection pooler (port 6543)
+
+ROOT CAUSE:
+===========
+The backend was using the direct PostgreSQL connection (port 5432) instead of Supabase's 
+connection pooler (port 6543). The direct connection has limited concurrent connections 
+and doesn't reuse connections efficiently.
+
+SOLUTION APPLIED:
+=================
+
+1. ✅ UPDATED DATABASE_URL in backend/.env
+   FROM: postgresql://...@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+   TO:   postgresql://...@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&schema=public
+   
+   - Port 6543: Connection pooler (TRANSACTION mode) - for queries
+   - Port 5432: Direct connection (SESSION mode) - for migrations only
+
+2. ✅ OPTIMIZED Prisma Client Configuration
+   - Reduced logging to only 'error' and 'warn' (removed 'info')
+   - Added SIGTERM handler for graceful shutdown
+   - Improved connection cleanup on process exit
+
+3. ✅ CONNECTION POOLING BENEFITS
+   - Reuses connections instead of creating new ones
+   - Limits concurrent connections to pool_size (default: 10)
+   - Automatically closes idle connections
+   - Better resource management
+
+HOW IT WORKS:
+=============
+
+Connection Pooler (pgbouncer) in TRANSACTION mode:
+- Each query gets a connection from the pool
+- Connection is returned to pool after query completes
+- Multiple queries can share the same connection
+- Much more efficient than direct connections
+
+Direct Connection (for migrations):
+- Used only for schema changes (migrations)
+- Requires SESSION mode (full connection)
+- Not used for regular queries
+
+CONFIGURATION:
+==============
+
+backend/.env:
+  DATABASE_URL=postgresql://user:pass@host:6543/db?pgbouncer=true&schema=public
+  DIRECT_URL=postgresql://user:pass@host:5432/db
+
+Prisma schema.prisma:
+  datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+  }
+
+TESTING THE FIX:
+================
+
+1. Restart the backend:
+   cd backend
+   npm run dev
+
+2. Monitor for connection errors:
+   - Should NOT see "MaxClientsInSessionMode" errors
+   - Should see successful database queries
+
+3. Check Supabase dashboard:
+   - Go to Database > Connection Pooler
+   - Verify connections are being pooled
+   - Should see active connections < 10
+
+TROUBLESHOOTING:
+================
+
+If errors persist:
+
+1. Check DATABASE_URL format:
+   - Must include ?pgbouncer=true
+   - Must use port 6543
+   - Must include &schema=public
+
+2. Verify DIRECT_URL:
+   - Must use port 5432
+   - Used only for migrations
+
+3. Check Supabase connection pooler settings:
+   - Go to Database > Connection Pooler
+   - Verify it's enabled
+   - Check pool_size setting (default: 10)
+
+4. Restart backend completely:
+   - Kill any running processes
+   - Clear any cached connections
+   - Start fresh: npm run dev
+
+MONITORING:
+===========
+
+To monitor connection usage:
+
+1. Supabase Dashboard:
+   - Database > Connection Pooler
+   - View active connections
+   - Check for connection leaks
+
+2. Backend Logs:
+   - Set PRISMA_DEBUG=true in .env to see query times
+   - Look for slow queries that might hold connections
+
+3. Performance:
+   - Monitor response times
+   - Check for connection timeout errors
+   - Verify database queries are completing
+
+BEST PRACTICES:
+===============
+
+1. Always use connection pooler for queries (port 6543)
+2. Use direct connection only for migrations (port 5432)
+3. Ensure connections are properly closed on app shutdown
+4. Monitor connection pool usage regularly
+5. Set appropriate pool_size based on concurrent users
+6. Use connection pooler in TRANSACTION mode for web apps
+
+REFERENCES:
+===========
+
+- Supabase Connection Pooler: https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler
+- Prisma Connection Management: https://www.prisma.io/docs/orm/reference/connection-management
+- pgBouncer Documentation: https://www.pgbouncer.org/

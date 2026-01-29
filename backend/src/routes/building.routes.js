@@ -92,8 +92,9 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Get all buildings for browsing (authenticated users)
-router.get('/all', authenticate, async (req, res) => {
+// Get all buildings for browsing (public - no auth required)
+router.get('/all', async (req, res) => {
+  console.log('🔍 [DEBUG] /all route hit - this should NOT require auth');
   try {
     const buildings = await buildingService.getAllBuildingsForBrowsing();
     res.json({ success: true, data: buildings });
@@ -135,8 +136,8 @@ router.get('/my-building/courses', authenticate, async (req, res) => {
   }
 });
 
-// Get building by ID - MUST be after specific routes like /my-building/courses
-router.get('/:id', authenticate, async (req, res) => {
+// Get building by ID (public - no auth required for browsing)
+router.get('/:id', async (req, res) => {
   try {
     const building = await buildingService.getBuildingById(req.params.id);
     res.json({ success: true, data: building });

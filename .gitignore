@@ -1,24 +1,55 @@
+# Dependencies
 node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Expo
 .expo/
+frontend/.expo/
 dist/
-npm-debug.*
+web-build/
+
+# Build outputs
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 *.orig.*
-web-build/
 
 # Environment files (contain secrets)
 .env
 .env.local
 .env.*.local
+frontend/.env
 backend/.env
+
+# Logs
+npm-debug.*
+*.log
 
 # macOS
 .DS_Store
 
+# Windows
+Thumbs.db
+
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
+
+# IDE files
+.vscode/settings.json
+.idea/
+
+# Database
+*.db
+*.sqlite
+
+# Prisma
+backend/prisma/migrations/dev.db*
+
+# Build directories
+build/
+dist/
+out/
 
