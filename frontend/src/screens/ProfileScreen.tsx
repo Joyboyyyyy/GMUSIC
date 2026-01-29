@@ -8,8 +8,9 @@ import {
   Switch,
   Modal,
   Pressable,
+  SafeAreaView as RNSafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,6 +31,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
   const { purchasedPacks } = useLibraryStore();
   const { purchasedCourseIds } = usePurchasedCoursesStore();
@@ -67,8 +69,8 @@ const ProfileScreen = () => {
 
   return (
     <ProtectedScreen>
-      <SafeAreaView style={styles.container}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+      <RNSafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 0 }}>
           {/* Profile Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
@@ -295,7 +297,7 @@ const ProfileScreen = () => {
           buttons={alertState.buttons}
           onDismiss={hideAlert}
         />
-      </SafeAreaView>
+      </RNSafeAreaView>
     </ProtectedScreen>
   );
 };
@@ -311,7 +313,9 @@ const createStyles = (theme: ReturnType<typeof getTheme>) => StyleSheet.create({
     paddingVertical: SPACING.xl, 
     paddingHorizontal: SPACING.screenPadding, 
     backgroundColor: theme.surface, 
-    marginBottom: SPACING.lg 
+    marginBottom: SPACING.lg,
+    marginTop: -SPACING.md,
+    paddingTop: SPACING.xl + SPACING.md,
   },
   headerContent: { 
     alignItems: 'center', 
